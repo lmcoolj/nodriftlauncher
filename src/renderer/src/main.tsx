@@ -5,6 +5,8 @@ import { ThemeProvider } from './theme/ThemeProvider'
 import { AuthProvider } from './auth/useAuth'
 import { InstancesProvider } from './instances/useInstances'
 import { LaunchProvider } from './instances/useLaunch'
+import { NavigationProvider } from './useNavigation'
+import { NotificationsProvider } from './useNotifications'
 import './styles/global.css'
 
 const container = document.getElementById('root')
@@ -15,13 +17,17 @@ if (!container) {
 createRoot(container).render(
   <React.StrictMode>
     <ThemeProvider>
-      <AuthProvider>
-        <InstancesProvider>
-          <LaunchProvider>
-            <App />
-          </LaunchProvider>
-        </InstancesProvider>
-      </AuthProvider>
+      <NotificationsProvider>
+        <AuthProvider>
+          <InstancesProvider>
+            <LaunchProvider>
+              <NavigationProvider>
+                <App />
+              </NavigationProvider>
+            </LaunchProvider>
+          </InstancesProvider>
+        </AuthProvider>
+      </NotificationsProvider>
     </ThemeProvider>
   </React.StrictMode>
 )

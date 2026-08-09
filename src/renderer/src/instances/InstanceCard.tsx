@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useInstances } from './useInstances'
 import { useInstanceRuntime, useLaunch } from './useLaunch'
-import { Console } from '../components/Console'
+import { useNavigation } from '../useNavigation'
 import { Modal } from '../components/Modal'
 
 const LOADER_LABELS: Record<NdLoader, string> = {
@@ -25,30 +25,26 @@ interface InstanceCardProps {
   instance: NdInstance
   canPlay: boolean
   onEdit: (instance: NdInstance) => void
-  onDelete: (instance: NdInstance) => void
 }
 
-export function InstanceCard({
-  instance,
-  canPlay,
-  onEdit,
-  onDelete
-}: InstanceCardProps): React.JSX.Element {
-  const { selectedId, select, openFolder, exportInstance } = useInstances()
+/**
+ * Home instance card. Clicking the body opens the Instance Viewer; the action
+ * buttons (Folder / Edit / Export / Launch) stop propagation. Delete and the
+ * console live in the Instance Viewer now.
+ */
+export function InstanceCard({ instance, canPlay, onEdit }: InstanceCardProps): React.JSX.Element {
+  const { select, openFolder, exportInstance } = useInstances()
   const { start, stop } = useLaunch()
+  const { openInstance } = useNavigation()
   const runtime = useInstanceRuntime(instance.id)
-  const [showConsole, setShowConsole] = useState(false)
   const [showExport, setShowExport] = useState(false)
 
-  const isSelected = instance.id === selectedId
   const busy =
     runtime.state === 'preparing' ||
     runtime.state === 'installing' ||
     runtime.state === 'launching'
   const running = runtime.state === 'running'
-
-  const percent =
-    runtime.total > 0 ? Math.round((runtime.done / runtime.total) * 100) : null
+  const percent = runtime.total > 0 ? Math.round((runtime.done / runtime.total) * 100) : null
 
   const statusText = (): string => {
     switch (runtime.state) {
@@ -69,28 +65,29 @@ export function InstanceCard({
     }
   }
 
+  const open = (): void => {
+    select(instance.id)
+    openInstance(instance.id)
+  }
+
   return (
     <div
-      className={'instance-card' + (isSelected ? ' instance-card--selected' : '')}
-      onClick={() => select(instance.id)}
+      className="instance-card"
+      onClick={open}
       role="button"
       tabIndex={0}
       onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') select(instance.id)
+        if (e.key === 'Enter' || e.key === ' ') open()
       }}
     >
       <div className="instance-card__head">
         <span
-          className={
-            'loader-badge' + (instance.loader === 'vanilla' ? ' loader-badge--vanilla' : '')
-          }
+          className={'loader-badge' + (instance.loader === 'vanilla' ? ' loader-badge--vanilla' : '')}
         >
           {LOADER_LABELS[instance.loader]}
         </span>
         <span
-          className={
-            'status-dot' + (running || instance.installed ? ' status-dot--ready' : '')
-          }
+          className={'status-dot' + (running || instance.installed ? ' status-dot--ready' : '')}
           title={statusText()}
         />
       </div>
@@ -120,6 +117,15 @@ export function InstanceCard({
       )}
 
       <div className="instance-card__actions" onClick={(e) => e.stopPropagation()}>
+        <button type="button" className="btn btn--ghost btn--sm" onClick={() => openFolder(instance.id)}>
+          Folder
+        </button>
+        <button type="button" className="btn btn--ghost btn--sm" onClick={() => onEdit(instance)}>
+          Edit
+        </button>
+        <button type="button" className="btn btn--ghost btn--sm" onClick={() => setShowExport(true)}>
+          Export
+        </button>
         {running ? (
           <button type="button" className="btn btn--danger btn--sm" onClick={() => stop(instance.id)}>
             Stop
@@ -132,39 +138,10 @@ export function InstanceCard({
             title={canPlay ? undefined : 'Sign in to play'}
             onClick={() => void start(instance.id)}
           >
-            {busy ? 'Working…' : 'Play'}
+            {busy ? 'Working…' : 'Launch'}
           </button>
         )}
-
-        <button type="button" className="btn btn--ghost btn--sm" onClick={() => setShowConsole(true)}>
-          Console
-        </button>
-        <button type="button" className="btn btn--ghost btn--sm" onClick={() => onEdit(instance)}>
-          Edit
-        </button>
-        <button type="button" className="btn btn--ghost btn--sm" onClick={() => openFolder(instance.id)}>
-          Folder
-        </button>
-        <button type="button" className="btn btn--ghost btn--sm" onClick={() => setShowExport(true)}>
-          Export
-        </button>
-        <button
-          type="button"
-          className="btn btn--ghost btn--sm btn--danger"
-          disabled={running || busy}
-          onClick={() => onDelete(instance)}
-        >
-          Delete
-        </button>
       </div>
-
-      {showConsole && (
-        <Console
-          title={`${instance.name} — Console`}
-          logs={runtime.logs}
-          onClose={() => setShowConsole(false)}
-        />
-      )}
 
       {showExport && (
         <div onClick={(e) => e.stopPropagation()}>

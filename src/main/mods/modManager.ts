@@ -2,7 +2,8 @@ import { promises as fs } from 'node:fs'
 import { basename, join } from 'node:path'
 import { ensureDir, instanceMinecraftDir } from '../paths'
 import { downloadFile } from '../launch/net'
-import { resolveBestVersion } from './modrinth'
+import { getInstance } from '../instances/instanceStore'
+import { getProjectTitle, resolveBestVersion } from './modrinth'
 
 function modsDir(instanceId: string): string {
   return join(instanceMinecraftDir(instanceId), 'mods')
@@ -55,33 +56,74 @@ export async function listInstalled(instanceId: string): Promise<InstalledMods> 
   return { index, files }
 }
 
-/** Download and install a Modrinth mod into an instance's isolated mods folder. */
+/**
+ * Install a Modrinth mod (and all its required dependencies) into an instance's
+ * isolated mods folder. Walks the required-dependency graph breadth-first,
+ * skipping any that are already present or have no compatible version.
+ */
 export async function installMod(
   instanceId: string,
   projectId: string,
-  title: string,
-  mcVersion: string,
-  loader: string
+  title: string
 ): Promise<void> {
-  const best = await resolveBestVersion(projectId, mcVersion, loader)
-  if (!best) {
-    throw new Error('No version of this mod matches your instance version and loader.')
+  const instance = await getInstance(instanceId)
+  if (!instance) throw new Error('Instance not found.')
+  if (instance.loader === 'vanilla') {
+    throw new Error('This instance has no mod loader — mods require Fabric/Forge/NeoForge.')
   }
-  await ensureDir(modsDir(instanceId))
-  await downloadFile(best.url, join(modsDir(instanceId), best.filename), best.sha1)
 
+  await ensureDir(modsDir(instanceId))
   const index = await readIndex(instanceId)
-  index[projectId] = {
-    projectId,
-    versionId: best.versionId,
-    filename: best.filename,
-    title,
-    url: best.url,
-    sha1: best.sha1,
-    sha512: best.sha512,
-    fileSize: best.fileSize
+
+  const seen = new Set<string>()
+  const queue: string[] = [projectId]
+
+  while (queue.length > 0) {
+    const pid = queue.shift() as string
+    if (seen.has(pid)) continue
+    seen.add(pid)
+
+    const best = await resolveBestVersion(pid, instance.mcVersion, instance.loader)
+    if (!best) {
+      // The root must resolve; a missing optional-graph dependency is skipped.
+      if (pid === projectId) {
+        throw new Error('No version of this mod matches this instance version and loader.')
+      }
+      continue
+    }
+
+    await downloadFile(best.url, join(modsDir(instanceId), best.filename), best.sha1)
+    index[pid] = {
+      projectId: pid,
+      versionId: best.versionId,
+      filename: best.filename,
+      title: pid === projectId ? title : await getProjectTitle(pid),
+      url: best.url,
+      sha1: best.sha1,
+      sha512: best.sha512,
+      fileSize: best.fileSize
+    }
+
+    for (const dep of best.requiredDependencies) queue.push(dep)
   }
+
   await writeIndex(instanceId, index)
+}
+
+/** List a mod's direct required dependencies (titles) for the install dialog. */
+export async function resolveDependencies(
+  instanceId: string,
+  projectId: string
+): Promise<Array<{ projectId: string; title: string }>> {
+  const instance = await getInstance(instanceId)
+  if (!instance || instance.loader === 'vanilla') return []
+  const best = await resolveBestVersion(projectId, instance.mcVersion, instance.loader)
+  if (!best) return []
+  const deps: Array<{ projectId: string; title: string }> = []
+  for (const dep of best.requiredDependencies) {
+    deps.push({ projectId: dep, title: await getProjectTitle(dep) })
+  }
+  return deps
 }
 
 /** Copy local .jar files into an instance's mods folder. */

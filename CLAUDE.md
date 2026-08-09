@@ -27,6 +27,8 @@ does real Microsoft auth and really launches Vanilla, Fabric, Forge and NeoForge
 npm run dev         # electron-vite dev (hot reload) — opens the real app window
 npm run build       # build main + preload + renderer
 npm run typecheck   # tsc for node (main/preload) and web (renderer) projects
+npm run dist        # build + package a Windows NSIS installer into release/
+npm run gen-icons   # regenerate build/icon.ico + build/icon.png from assets/logo.png
 ```
 
 There is no automated test suite. Verification is: `typecheck` + `build` pass, then
@@ -48,21 +50,26 @@ src/main/
   platform/window.ts    frameless BrowserWindow + native window-control IPC
   auth/                 MS→Xbox→XSTS→Minecraft chain, safeStorage token, profile
   metadata/             version lists: Mojang, Fabric, Forge, NeoForge (dropdowns)
-  instances/            instance CRUD (instanceStore) + import/export (importExport)
+  instances/            instanceStore (CRUD) + importExport (.mrpack/.zip) + instanceFs
+                        (per-instance mods enable/disable, packs, file browser, jar meta)
   launch/               the download + launch pipeline (see ARCHITECTURE.md)
-  mods/                 Modrinth search + install into an instance's mods folder
-  cosmetics/            skin catalog + upload via MS skin endpoints
+  mods/                 Modrinth search/detail + install (with dependency BFS)
+  cosmetics/            skin upload/reset via MS skin endpoints
   ipc/                  one register*Ipc() per domain, all called from index.ts
 src/preload/index.ts    the ONLY renderer↔main surface (window.nodrift)
 src/renderer/src/
-  App.tsx, main.tsx     shell; providers: Theme → Auth → Instances → Launch
+  App.tsx, main.tsx     shell; providers: Theme → Notifications → Auth → Instances
+                        → Launch → Navigation
+  useNavigation.tsx      tab + Instance-Viewer routing; useNotifications.tsx (toasts)
   components/            TitleBar, WindowControls, Modal, Console, SkinFace, icons
   tabs/                  HomeTab, ModsTab, CosmeticsTab, SettingsTab
-  instances/             useInstances, useLaunch contexts + InstanceCard, dialogs
+  instances/             useInstances, useLaunch contexts, InstanceCard, dialogs,
+                        InstanceViewer + viewer/{Logs,Mods,Files,Packs}Panel
+  mods/                  ModDetail (markdown), InstallModal (instance picker + deps)
   auth/useAuth.tsx       auth context (restore on mount, subscribe to changes)
   theme/                 CSS-variable theme system (tokens, themes, provider)
   global.d.ts            window.nodrift type declarations (mirror of preload)
-resources/skins/         bundled skin catalog PNGs
+assets/logo.png          app icon source; build/ holds icon.ico + installer.nsh
 ```
 
 ## Conventions
@@ -100,7 +107,7 @@ Do not change these without re-verifying against the source.
 | Fabric | `meta.fabricmc.net/v2/versions/{game,loader,loader/<mc>/<ver>/profile/json}` |
 | NeoForge | `maven.neoforged.net/.../net/neoforged/neoforge` (versions), `.../neoforge-<v>-installer.jar` |
 | Forge | `maven.minecraftforge.net/.../forge/maven-metadata.xml`, `.../forge-<v>-installer.jar` |
-| Modrinth | `api.modrinth.com/v2/search`, `/project/{id}/version` (send a descriptive `User-Agent`) |
+| Modrinth | `api.modrinth.com/v2/search`, `/project/{id}`, `/project/{id}/version` (send a descriptive `User-Agent`) |
 
 ## Gotchas (hard-won)
 
@@ -139,9 +146,11 @@ These caused real bugs during development. Respect them.
 - **New loader**: model it on `fabricInstaller.ts` (simple, profile merge) or
   `forgeInstaller.ts` (installer + processors). Wire the branch into
   `launchService.ts` and set `includeClientJar` correctly.
-- **Packaging**: not set up yet. Will need electron-builder + `extraResources` to
-  bundle `resources/skins`, and a check that `safeStorage` sign-in persists in the
-  packaged build (a stated hard requirement).
+- **Packaging**: `npm run dist` (electron-builder → NSIS). Config in
+  `electron-builder.yml`, custom installer steps in `build/installer.nsh`, icons from
+  `build/icon.ico` (regenerate with `npm run gen-icons`). `assets/logo.png` is copied
+  to `resources/logo.png` via `extraResources` for the packaged runtime window icon.
+  Still verify the "stays signed in across restart" requirement in the built app.
 
 More detail in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and
 [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).

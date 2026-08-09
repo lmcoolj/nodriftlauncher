@@ -1,0 +1,38 @@
+appId: xyz.nodriftlabs.nodriftlauncher
+productName: NodriftLauncher
+copyright: © nodrift_labs
+
+directories:
+  output: release
+  buildResources: build
+
+# The renderer/main/preload are pre-bundled by electron-vite into out/.
+files:
+  - out/**/*
+  - package.json
+
+# Bundle the runtime window icon (read via process.resourcesPath when packaged).
+extraResources:
+  - from: assets/logo.png
+    to: logo.png
+
+win:
+  target:
+    - nsis
+  icon: build/icon.ico
+  artifactName: ${productName}-Setup-${version}.${ext}
+
+# Custom assisted installer (not the default silent one-click).
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: NodriftLauncher
+  menuCategory: nodrift_labs
+  installerIcon: build/icon.ico
+  uninstallerIcon: build/icon.ico
+  installerHeaderIcon: build/icon.ico
+  uninstallDisplayName: NodriftLauncher ${version}
+  include: build/installer.nsh

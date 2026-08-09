@@ -76,12 +76,24 @@ tree). Useful when debugging:
 - Delete `auth.bin` to force a fresh sign-in.
 - Delete `runtime/` entirely to re-download everything (instances are preserved).
 
-## Regenerating the skin catalog
+## Packaging a Windows installer
 
-The bundled catalog PNGs in `resources/skins/` were produced by a small no-dependency
-PNG generator. To change or add catalog skins, drop valid 64×64 PNG skins into
-`resources/skins/` — they're picked up automatically at runtime. (When packaging is
-set up, this folder must be included via electron-builder `extraResources`.)
+```bash
+npm run dist        # electron-vite build + electron-builder → release/*.exe
+npm run dist:dir    # unpacked app only (faster smoke test)
+npm run gen-icons   # rebuild build/icon.ico + build/icon.png from assets/logo.png
+```
+
+- Config: [electron-builder.yml](../electron-builder.yml). Target is a **custom
+  assisted NSIS installer** (per-user, choose-directory, Start-menu + desktop
+  shortcuts); custom NSIS macros live in [build/installer.nsh](../build/installer.nsh).
+- Icons come from `build/icon.ico` (generated from `assets/logo.png`).
+- `assets/logo.png` is bundled to `resources/logo.png` (electron-builder
+  `extraResources`) so the packaged app's window icon resolves at runtime.
+- Output goes to `release/` (git-ignored). First run downloads NSIS/electron
+  binaries and can take a few minutes.
+- **Verify in the built app:** sign in, quit, relaunch — you must come back signed in
+  (the encrypted `safeStorage` refresh token). This is a hard product requirement.
 
 ## Coding notes
 

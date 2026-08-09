@@ -1,23 +1,27 @@
 import { useState } from 'react'
 import { useAuth } from '../auth/useAuth'
 import { useInstances } from '../instances/useInstances'
+import { useNotifications } from '../useNotifications'
 import { CreateInstanceDialog } from '../instances/CreateInstanceDialog'
 import { InstanceCard } from '../instances/InstanceCard'
-import { Modal } from '../components/Modal'
 import { SkinFace } from '../components/SkinFace'
 
 /**
- * Home view. Hosts the account area and the instance manager (create / edit /
- * delete + selection). Downloading runtimes and the Play button arrive in
- * Step 4, so instances show a "Not installed" status for now.
+ * Home view: account area + the instance grid. Clicking a card opens the Instance
+ * Viewer; create / import live in the header. Delete and console are in the viewer.
  */
 export function HomeTab(): React.JSX.Element {
   const { status, session, error: authError, login, logout } = useAuth()
-  const { instances, loading, error, remove, importPack } = useInstances()
+  const { instances, loading, error, importPack } = useInstances()
+  const { notify } = useNotifications()
 
   const [creating, setCreating] = useState(false)
   const [editing, setEditing] = useState<NdInstance | null>(null)
-  const [deleting, setDeleting] = useState<NdInstance | null>(null)
+
+  const handleImport = async (): Promise<void> => {
+    const instance = await importPack()
+    if (instance) notify(`Successfully imported "${instance.name}"`, 'success')
+  }
 
   return (
     <div className="home">
@@ -27,8 +31,8 @@ export function HomeTab(): React.JSX.Element {
           <button type="button" className="btn btn--primary" onClick={() => setCreating(true)}>
             + New Instance
           </button>
-          <button type="button" className="btn btn--ghost" onClick={() => void importPack()}>
-            Import
+          <button type="button" className="btn btn--ghost" onClick={() => void handleImport()}>
+            Import Instance
           </button>
         </div>
 
@@ -50,7 +54,7 @@ export function HomeTab(): React.JSX.Element {
               onClick={() => void login()}
               disabled={status === 'signing-in'}
             >
-              {status === 'signing-in' ? 'Waiting for Microsoft…' : 'Sign in with Microsoft'}
+              {status === 'signing-in' ? 'Waiting for Microsoft…' : 'Sign In'}
             </button>
           )}
         </div>
@@ -79,46 +83,13 @@ export function HomeTab(): React.JSX.Element {
               instance={instance}
               canPlay={status === 'signed-in'}
               onEdit={setEditing}
-              onDelete={setDeleting}
             />
           ))}
         </div>
       )}
 
       {creating && <CreateInstanceDialog onClose={() => setCreating(false)} />}
-      {editing && (
-        <CreateInstanceDialog instance={editing} onClose={() => setEditing(null)} />
-      )}
-      {deleting && (
-        <Modal
-          title="Delete instance"
-          onClose={() => setDeleting(null)}
-          footer={
-            <>
-              <button type="button" className="btn btn--ghost" onClick={() => setDeleting(null)}>
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="btn btn--primary btn--danger"
-                onClick={() => {
-                  const target = deleting
-                  setDeleting(null)
-                  void remove(target.id)
-                }}
-              >
-                Delete
-              </button>
-            </>
-          }
-        >
-          <p>
-            Delete <strong>{deleting.name}</strong>? This removes its saves, configs,
-            mods and resource packs. The shared runtime is not affected. This cannot
-            be undone.
-          </p>
-        </Modal>
-      )}
+      {editing && <CreateInstanceDialog instance={editing} onClose={() => setEditing(null)} />}
     </div>
   )
 }

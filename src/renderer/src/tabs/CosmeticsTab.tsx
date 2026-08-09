@@ -5,28 +5,18 @@ import { SkinFace } from '../components/SkinFace'
 type Variant = 'classic' | 'slim'
 
 /**
- * Cosmetics view: shows the current skin, and lets the user change it by
- * uploading a PNG or picking from a locally-bundled catalog. Skin changes use
- * Microsoft's authenticated skin endpoints; there is no catalog API — the
- * catalog is PNGs shipped with the launcher.
+ * Cosmetics view: shows the current skin and lets the user change it by uploading
+ * a PNG (or reset to default). Uses Microsoft's authenticated skin endpoints.
  */
 export function CosmeticsTab(): React.JSX.Element {
   const { status, session } = useAuth()
   const [variant, setVariant] = useState<Variant>('classic')
-  const [catalog, setCatalog] = useState<NdCatalogSkin[]>([])
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  // Reflect the account's current model, and load the catalog once signed in.
   useEffect(() => {
     if (session?.skin?.variant) setVariant(session.skin.variant === 'SLIM' ? 'slim' : 'classic')
   }, [session?.skin?.variant])
-
-  useEffect(() => {
-    window.nodrift.skins.catalog().then((res) => {
-      if (res.ok) setCatalog(res.skins)
-    })
-  }, [])
 
   if (status !== 'signed-in' || !session) {
     return (
@@ -38,7 +28,10 @@ export function CosmeticsTab(): React.JSX.Element {
     )
   }
 
-  const run = async (label: string, fn: () => Promise<{ ok: boolean; error?: string }>): Promise<void> => {
+  const run = async (
+    label: string,
+    fn: () => Promise<{ ok: boolean; error?: string }>
+  ): Promise<void> => {
     setBusy(label)
     setError(null)
     const res = await fn()
@@ -46,11 +39,8 @@ export function CosmeticsTab(): React.JSX.Element {
     setBusy(null)
   }
 
-  const upload = (): Promise<void> =>
-    run('upload', () => window.nodrift.skins.upload(variant))
+  const upload = (): Promise<void> => run('upload', () => window.nodrift.skins.upload(variant))
   const reset = (): Promise<void> => run('reset', () => window.nodrift.skins.reset())
-  const applyCatalog = (id: string): Promise<void> =>
-    run(id, () => window.nodrift.skins.applyCatalog(id, variant))
 
   return (
     <div className="cosmetics">
@@ -106,31 +96,6 @@ export function CosmeticsTab(): React.JSX.Element {
           {error && <p className="field__note field__note--warn">{error}</p>}
         </div>
       </div>
-
-      <h2 className="cosmetics__subtitle">Catalog</h2>
-      <p className="cosmetics__note">
-        Bundled skins. Click one to apply it as your {variant} skin.
-      </p>
-      {catalog.length === 0 ? (
-        <p className="mods__hint">No catalog skins found.</p>
-      ) : (
-        <div className="catalog-grid">
-          {catalog.map((skin) => (
-            <button
-              key={skin.id}
-              type="button"
-              className="catalog-item"
-              disabled={busy !== null}
-              onClick={() => void applyCatalog(skin.id)}
-            >
-              <SkinFace dataUrl={skin.dataUrl} size={72} />
-              <span className="catalog-item__name">
-                {busy === skin.id ? 'Applying…' : skin.name}
-              </span>
-            </button>
-          ))}
-        </div>
-      )}
     </div>
   )
 }

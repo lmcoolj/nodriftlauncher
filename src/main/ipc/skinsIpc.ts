@@ -1,30 +1,7 @@
 import { BrowserWindow, dialog, ipcMain } from 'electron'
-import {
-  applyCatalogSkin,
-  listCatalog,
-  resetSkin,
-  uploadSkinFromFile,
-  type SkinVariant
-} from '../cosmetics/skinManager'
+import { resetSkin, uploadSkinFromFile, type SkinVariant } from '../cosmetics/skinManager'
 
 export function registerSkinsIpc(): void {
-  ipcMain.handle('skins:catalog', async () => {
-    try {
-      return { ok: true as const, skins: await listCatalog() }
-    } catch (err) {
-      return { ok: false as const, error: (err as Error).message }
-    }
-  })
-
-  ipcMain.handle('skins:apply-catalog', async (_event, id: string, variant: SkinVariant) => {
-    try {
-      await applyCatalogSkin(id, variant)
-      return { ok: true as const }
-    } catch (err) {
-      return { ok: false as const, error: (err as Error).message }
-    }
-  })
-
   ipcMain.handle('skins:reset', async () => {
     try {
       await resetSkin()

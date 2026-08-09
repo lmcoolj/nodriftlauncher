@@ -21,12 +21,16 @@ imports/exports packs (`.mrpack` and `.zip`), and lets you change your skin.
   assets and Java runtime are **shared** and downloaded once per version+loader.
 - **All four loaders launch for real** — Vanilla, Fabric, NeoForge, Forge, including
   auto-downloaded per-version Java and Forge/NeoForge's bytecode-processor install.
-- **Mods** — search and install from the Modrinth API, filtered to the active
-  instance's version + loader, plus manual `.jar` drop-in.
+- **Instance Viewer** — a per-instance page with live **Logs**, per-instance **Mods**
+  (enable/disable, import), a **Files** browser, and **resource-pack** management.
+- **Mods browser** — Modrinth search with instant results, a **filters** sidebar
+  (environment / version / loader / category), rich mod **detail pages** (formatted
+  descriptions), **dependency auto-install**, and **multi-select** batch install.
 - **Import / Export** — real Modrinth `.mrpack` and a portable `.zip` format.
-- **Cosmetics** — view your current skin, upload a PNG, or apply a bundled catalog
-  skin, using Microsoft's authenticated skin endpoints.
+- **Cosmetics** — view your current skin and upload a PNG (or reset), using
+  Microsoft's authenticated skin endpoints.
 - **Themes** — a small CSS-variable theme system with three built-in themes.
+- **Toast notifications** for imports, installs and other actions.
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how it all fits together.
 
@@ -96,20 +100,35 @@ Everything is stored under Electron's `userData` directory
 
 ---
 
+## Building a Windows installer
+
+The app packages with **electron-builder** into a custom (assisted) NSIS installer.
+
+```bash
+npm run dist          # build + produce release/NodriftLauncher-Setup-<version>.exe
+npm run dist:dir      # unpacked build only (faster, for testing)
+npm run gen-icons     # regenerate build/icon.ico + build/icon.png from assets/logo.png
+```
+
+The installer (config in [electron-builder.yml](electron-builder.yml), custom NSIS
+steps in [build/installer.nsh](build/installer.nsh)) is per-user (no admin prompt),
+lets you choose the install directory, and creates Start-menu + desktop shortcuts.
+Output lands in `release/`.
+
+---
+
 ## Project status
 
-All v1 spec features are implemented and verified. Remaining work:
-
-- **Packaging** — electron-builder config to produce an installer and bundle the
-  skin catalog (`resources/skins`).
-- **Polish** — UI refinements and mod-browser enhancements (filters, instant
-  search, mod detail pages).
+All v1 spec features plus the polish pass are implemented and verified, and the app
+packages into a Windows installer. Possible next steps: code signing, auto-update,
+and cross-platform (Linux/macOS) targets.
 
 ---
 
 ## Tech stack
 
-Electron 43 · TypeScript · React 18 · electron-vite (Vite 7) · adm-zip.
+Electron 43 · TypeScript · React 18 · electron-vite (Vite 7) · electron-builder ·
+adm-zip · react-markdown.
 
 External services (all official, verified endpoints — see
 [CLAUDE.md](CLAUDE.md#verified-external-endpoints)): Microsoft OAuth / Xbox / XSTS,

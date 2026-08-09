@@ -106,17 +106,53 @@ declare global {
     versions: string[]
   }
 
-  interface NdModIndexEntry {
-    projectId: string
-    versionId: string
-    filename: string
+  interface NdModSearchOptions {
+    query: string
+    mcVersion?: string
+    loaders?: string[]
+    categories?: string[]
+    environment?: 'client' | 'server' | 'both' | null
+    offset?: number
+  }
+
+  interface NdModProject {
+    id: string
+    slug: string
     title: string
+    description: string
+    body: string
+    icon_url: string | null
+    downloads: number
+    categories: string[]
+    game_versions: string[]
+    loaders: string[]
+    gallery: Array<{ url: string; title: string | null }>
   }
 
   interface NdCatalogSkin {
     id: string
     name: string
     dataUrl: string
+  }
+
+  interface NdInstanceMod {
+    filename: string
+    actualName: string
+    enabled: boolean
+    name: string
+    description: string
+    icon: string | null
+  }
+
+  interface NdInstancePack {
+    name: string
+    icon: string | null
+  }
+
+  interface NdDirEntry {
+    name: string
+    isDir: boolean
+    size: number
   }
 
   interface Window {
@@ -165,40 +201,36 @@ declare global {
         onLog: (callback: (l: NdLaunchLog) => void) => () => void
       }
       mods: {
-        search: (
-          query: string,
-          mcVersion: string,
-          loader: string,
-          offset: number
-        ) => Promise<NdResult<{ hits: NdModHit[] }>>
-        installed: (
-          instanceId: string
-        ) => Promise<NdResult<{ index: Record<string, NdModIndexEntry>; files: string[] }>>
+        search: (options: NdModSearchOptions) => Promise<NdResult<{ hits: NdModHit[] }>>
+        project: (id: string) => Promise<NdResult<{ project: NdModProject }>>
+        resolveDeps: (
+          instanceId: string,
+          projectId: string
+        ) => Promise<NdResult<{ deps: Array<{ projectId: string; title: string }> }>>
         install: (
           instanceId: string,
           projectId: string,
-          title: string,
-          mcVersion: string,
-          loader: string
+          title: string
         ) => Promise<NdResult<Record<string, never>>>
-        remove: (
-          instanceId: string,
-          filename: string
+        openUrl: (url: string) => Promise<NdResult<Record<string, never>>>
+      }
+      instanceFs: {
+        listMods: (id: string) => Promise<NdResult<{ mods: NdInstanceMod[] }>>
+        toggleMod: (
+          id: string,
+          actualName: string
         ) => Promise<NdResult<Record<string, never>>>
-        installLocal: (
-          instanceId: string,
-          paths: string[]
-        ) => Promise<NdResult<{ added: number }>>
-        pickAndInstall: (instanceId: string) => Promise<NdResult<{ added: number }>>
-        getFilePath: (file: File) => string
+        importMods: (id: string) => Promise<NdResult<{ added: number }>>
+        listPacks: (id: string) => Promise<NdResult<{ packs: NdInstancePack[] }>>
+        importPacks: (id: string) => Promise<NdResult<{ added: number }>>
+        browse: (
+          id: string,
+          relPath: string
+        ) => Promise<NdResult<{ path: string; entries: NdDirEntry[] }>>
+        open: (id: string, relPath: string) => Promise<NdResult<Record<string, never>>>
       }
       skins: {
-        catalog: () => Promise<NdResult<{ skins: NdCatalogSkin[] }>>
         upload: (variant: 'classic' | 'slim') => Promise<NdResult<{ changed: boolean }>>
-        applyCatalog: (
-          id: string,
-          variant: 'classic' | 'slim'
-        ) => Promise<NdResult<Record<string, never>>>
         reset: () => Promise<NdResult<Record<string, never>>>
       }
       platform: string

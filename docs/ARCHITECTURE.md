@@ -108,11 +108,15 @@ auto-selected (newest stable) in the UI.
 
 ## Mods (`src/main/mods`)
 
-`modrinth.ts` searches and resolves versions via the Modrinth API, filtered to the
-active instance's version + loader. `modManager.ts` installs into the instance's
-isolated `mods/` folder and tracks Modrinth installs in `.nodrift-mods.json`
-(including download URL + hashes, so export can build proper `.mrpack` `files[]`).
-Manual `.jar`s are copied in via a file picker or drag-drop.
+`modrinth.ts` searches (with facets for environment / version / loader / category),
+fetches project detail pages, and resolves versions. `modManager.ts` installs into
+the instance's isolated `mods/` folder and tracks Modrinth installs in
+`.nodrift-mods.json` (including download URL + hashes, so export can build proper
+`.mrpack` `files[]`). Installing walks the **required-dependency graph** breadth-first
+and installs everything. The Mods tab is a standalone browser: the install dialog
+picks the target instance, and per-instance mod management (enable/disable, import)
+lives in the Instance Viewer (`src/main/instances/instanceFs.ts`, which also reads a
+jar's embedded `fabric.mod.json` / `mods.toml` for name/description/icon).
 
 ## Import / Export (`src/main/instances/importExport.ts`)
 
@@ -134,7 +138,21 @@ updates. There is no skin *catalog* API — the catalog is PNGs bundled in
 
 ## Renderer structure
 
-Providers wrap the app in order: **Theme → Auth → Instances → Launch**. Tabs
-(`Home`, `Mods`, `Cosmetics`, plus a gear `Settings`) read those contexts. The
-theme system maps token objects to CSS custom properties on `:root`, so restyling is
-data, not code.
+Providers wrap the app in order: **Theme → Notifications → Auth → Instances → Launch
+→ Navigation**. The title-bar tabs are `Home`, `Mods`, `Cosmetics`, plus a gear for
+`Settings` (theme + sign out). `useNavigation` also routes to the **Instance Viewer**
+(a sub-view of Home) — a per-instance page with Logs (live game/install output),
+Mods (enable/disable + import), Files (in-app browser), and Packs (resource packs).
+`useNotifications` renders a toast stack. The theme system maps token objects to CSS
+custom properties on `:root`, so restyling is data, not code.
+
+## Packaging (`electron-builder.yml`)
+
+`npm run dist` runs the electron-vite build, then electron-builder targets a custom
+assisted NSIS installer for Windows (per-user, choose-directory, shortcuts; custom
+macros in `build/installer.nsh`). Icons come from `build/icon.ico` (generated from
+`assets/logo.png` by `scripts/gen-icons.mjs`), and `assets/logo.png` is bundled to
+`resources/logo.png` so the packaged window icon resolves. Only `adm-zip` is a true
+runtime dependency (externalized in the main build); React and friends are bundled
+into the renderer, so they live in devDependencies and aren't shipped in
+`node_modules`.

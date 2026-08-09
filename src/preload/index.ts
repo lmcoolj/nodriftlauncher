@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer, webUtils } from 'electron'
+import { contextBridge, ipcRenderer } from 'electron'
 import type { IpcRendererEvent } from 'electron'
 
 /** Renderer-safe session shape (mirror of main's AuthSession). */
@@ -98,11 +98,27 @@ interface ModHit {
   versions: string[]
 }
 
-interface ModIndexEntry {
-  projectId: string
-  versionId: string
-  filename: string
+interface ModSearchOptions {
+  query: string
+  mcVersion?: string
+  loaders?: string[]
+  categories?: string[]
+  environment?: 'client' | 'server' | 'both' | null
+  offset?: number
+}
+
+interface ModProject {
+  id: string
+  slug: string
   title: string
+  description: string
+  body: string
+  icon_url: string | null
+  downloads: number
+  categories: string[]
+  game_versions: string[]
+  loaders: string[]
+  gallery: Array<{ url: string; title: string | null }>
 }
 
 /**
@@ -186,48 +202,61 @@ const api = {
     }
   },
   mods: {
-    search: (
-      query: string,
-      mcVersion: string,
-      loader: string,
-      offset: number
-    ): Promise<Result<{ hits: ModHit[] }>> =>
-      ipcRenderer.invoke('mods:search', query, mcVersion, loader, offset),
-    installed: (
-      instanceId: string
-    ): Promise<Result<{ index: Record<string, ModIndexEntry>; files: string[] }>> =>
-      ipcRenderer.invoke('mods:installed', instanceId),
+    search: (options: ModSearchOptions): Promise<Result<{ hits: ModHit[] }>> =>
+      ipcRenderer.invoke('mods:search', options),
+    project: (id: string): Promise<Result<{ project: ModProject }>> =>
+      ipcRenderer.invoke('mods:project', id),
+    resolveDeps: (
+      instanceId: string,
+      projectId: string
+    ): Promise<Result<{ deps: Array<{ projectId: string; title: string }> }>> =>
+      ipcRenderer.invoke('mods:resolve-deps', instanceId, projectId),
     install: (
       instanceId: string,
       projectId: string,
-      title: string,
-      mcVersion: string,
-      loader: string
+      title: string
     ): Promise<Result<Record<string, never>>> =>
-      ipcRenderer.invoke('mods:install', instanceId, projectId, title, mcVersion, loader),
-    remove: (instanceId: string, filename: string): Promise<Result<Record<string, never>>> =>
-      ipcRenderer.invoke('mods:remove', instanceId, filename),
-    installLocal: (
-      instanceId: string,
-      paths: string[]
-    ): Promise<Result<{ added: number }>> =>
-      ipcRenderer.invoke('mods:install-local', instanceId, paths),
-    pickAndInstall: (instanceId: string): Promise<Result<{ added: number }>> =>
-      ipcRenderer.invoke('mods:pick-and-install', instanceId),
-    /** Resolve the absolute path of a drag-dropped File (Electron webUtils). */
-    getFilePath: (file: File): string => webUtils.getPathForFile(file)
+      ipcRenderer.invoke('mods:install', instanceId, projectId, title),
+    openUrl: (url: string): Promise<Result<Record<string, never>>> =>
+      ipcRenderer.invoke('mods:open-url', url)
+  },
+  instanceFs: {
+    listMods: (
+      id: string
+    ): Promise<
+      Result<{
+        mods: Array<{
+          filename: string
+          actualName: string
+          enabled: boolean
+          name: string
+          description: string
+          icon: string | null
+        }>
+      }>
+    > => ipcRenderer.invoke('ifs:list-mods', id),
+    toggleMod: (id: string, actualName: string): Promise<Result<Record<string, never>>> =>
+      ipcRenderer.invoke('ifs:toggle-mod', id, actualName),
+    importMods: (id: string): Promise<Result<{ added: number }>> =>
+      ipcRenderer.invoke('ifs:import-mods', id),
+    listPacks: (
+      id: string
+    ): Promise<Result<{ packs: Array<{ name: string; icon: string | null }> }>> =>
+      ipcRenderer.invoke('ifs:list-packs', id),
+    importPacks: (id: string): Promise<Result<{ added: number }>> =>
+      ipcRenderer.invoke('ifs:import-packs', id),
+    browse: (
+      id: string,
+      relPath: string
+    ): Promise<
+      Result<{ path: string; entries: Array<{ name: string; isDir: boolean; size: number }> }>
+    > => ipcRenderer.invoke('ifs:browse', id, relPath),
+    open: (id: string, relPath: string): Promise<Result<Record<string, never>>> =>
+      ipcRenderer.invoke('ifs:open', id, relPath)
   },
   skins: {
-    catalog: (): Promise<
-      Result<{ skins: Array<{ id: string; name: string; dataUrl: string }> }>
-    > => ipcRenderer.invoke('skins:catalog'),
     upload: (variant: 'classic' | 'slim'): Promise<Result<{ changed: boolean }>> =>
       ipcRenderer.invoke('skins:upload', variant),
-    applyCatalog: (
-      id: string,
-      variant: 'classic' | 'slim'
-    ): Promise<Result<Record<string, never>>> =>
-      ipcRenderer.invoke('skins:apply-catalog', id, variant),
     reset: (): Promise<Result<Record<string, never>>> => ipcRenderer.invoke('skins:reset')
   },
   platform: process.platform

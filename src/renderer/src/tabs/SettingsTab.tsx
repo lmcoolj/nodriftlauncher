@@ -1,17 +1,41 @@
 import { useTheme } from '../theme/ThemeProvider'
+import { useAuth } from '../auth/useAuth'
 
-/**
- * Settings view. For Step 1 this hosts the working theme switcher, which proves
- * the CSS-variable theme system end to end. Layout switching and other settings
- * are added later.
- */
+/** Settings: theme switcher and account (sign out). */
 export function SettingsTab(): React.JSX.Element {
   const { theme, themes, setThemeId } = useTheme()
+  const { status, session, login, logout } = useAuth()
 
   return (
     <div className="settings">
       <div className="placeholder__badge">Settings</div>
       <h1 className="settings__title">Settings</h1>
+
+      <section className="settings__section">
+        <h2 className="settings__heading">Account</h2>
+        {status === 'signed-in' && session ? (
+          <div className="settings__account">
+            <span className="settings__hint">
+              Signed in as <strong>{session.username}</strong>
+            </span>
+            <button type="button" className="btn btn--ghost btn--sm" onClick={() => void logout()}>
+              Sign out
+            </button>
+          </div>
+        ) : (
+          <div className="settings__account">
+            <span className="settings__hint">Not signed in.</span>
+            <button
+              type="button"
+              className="btn btn--primary btn--sm"
+              disabled={status === 'signing-in'}
+              onClick={() => void login()}
+            >
+              {status === 'signing-in' ? 'Waiting for Microsoft…' : 'Sign In'}
+            </button>
+          </div>
+        )}
+      </section>
 
       <section className="settings__section">
         <h2 className="settings__heading">Theme</h2>

@@ -1,6 +1,13 @@
-import { BrowserWindow, ipcMain } from 'electron'
+import { app, BrowserWindow, ipcMain } from 'electron'
 import type { IpcMainEvent, IpcMainInvokeEvent } from 'electron'
 import { join } from 'path'
+
+/** App icon: assets/logo.png in dev, bundled beside resources when packaged. */
+function iconPath(): string {
+  return app.isPackaged
+    ? join(process.resourcesPath, 'logo.png')
+    : join(app.getAppPath(), 'assets', 'logo.png')
+}
 
 /**
  * Platform layer for window creation and native window controls.
@@ -29,6 +36,7 @@ export function createMainWindow(): BrowserWindow {
     // thickFrame keeps the native resize border on Windows so the window can be
     // resized from its edges/corners even though the frame is hidden.
     ...(isWin ? { thickFrame: true } : {}),
+    icon: iconPath(),
     backgroundColor: '#0e0f13',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),

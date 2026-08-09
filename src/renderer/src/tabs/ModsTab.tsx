@@ -1,222 +1,276 @@
-import { useCallback, useEffect, useState, type FormEvent, type DragEvent } from 'react'
+import { useEffect, useState } from 'react'
+import { InstallModal, type InstallHit } from '../mods/InstallModal'
+import { ModDetail } from '../mods/ModDetail'
 import { useInstances } from '../instances/useInstances'
 
-/**
- * Mods view. Operates on the currently-selected instance (from Home), filtering
- * Modrinth results to that instance's Minecraft version + loader, tracking
- * per-mod install state, and supporting manual .jar install (picker + drag-drop).
- */
+type Environment = 'all' | 'client' | 'server' | 'both'
+
+const ENVIRONMENTS: Array<{ id: Environment; label: string }> = [
+  { id: 'all', label: 'All' },
+  { id: 'client', label: 'Client-Side Only' },
+  { id: 'server', label: 'Server-Side Only' },
+  { id: 'both', label: 'Both-Sides' }
+]
+
+const LOADERS = [
+  { id: 'fabric', label: 'Fabric' },
+  { id: 'forge', label: 'Forge' },
+  { id: 'neoforge', label: 'NeoForge' }
+]
+
+const CATEGORIES = [
+  { id: 'optimization', label: 'Performance' },
+  { id: 'utility', label: 'Utility' },
+  { id: 'decoration', label: 'Decoration' },
+  { id: 'library', label: 'Library' },
+  { id: 'management', label: 'Management' },
+  { id: 'adventure', label: 'Adventure' },
+  { id: 'magic', label: 'Magic' },
+  { id: 'technology', label: 'Technology' },
+  { id: 'storage', label: 'Storage' },
+  { id: 'food', label: 'Food' }
+]
+
+/** Modrinth mod browser: instant search, filters (incl. per-instance), multi-select, details. */
 export function ModsTab(): React.JSX.Element {
-  const { selected } = useInstances()
+  const { instances } = useInstances()
 
   const [query, setQuery] = useState('')
+  const [environment, setEnvironment] = useState<Environment>('all')
+  const [mcVersion, setMcVersion] = useState('')
+  const [loaders, setLoaders] = useState<string[]>([])
+  const [categories, setCategories] = useState<string[]>([])
+  const [filterInstanceId, setFilterInstanceId] = useState('')
+
   const [hits, setHits] = useState<NdModHit[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [installedIds, setInstalledIds] = useState<Set<string>>(new Set())
-  const [installedFiles, setInstalledFiles] = useState<string[]>([])
-  const [busyIds, setBusyIds] = useState<Set<string>>(new Set())
-  const [dragging, setDragging] = useState(false)
 
-  const canMod = selected && selected.loader !== 'vanilla'
+  const [detailId, setDetailId] = useState<string | null>(null)
+  const [selected, setSelected] = useState<Record<string, NdModHit>>({})
+  const [installHits, setInstallHits] = useState<InstallHit[] | null>(null)
 
-  const refreshInstalled = useCallback(async () => {
-    if (!selected) return
-    const res = await window.nodrift.mods.installed(selected.id)
-    if (res.ok) {
-      setInstalledIds(new Set(Object.keys(res.index)))
-      setInstalledFiles(res.files)
-    }
-  }, [selected])
+  const filterInstance = instances.find((i) => i.id === filterInstanceId) ?? null
+  const lockedToInstance = Boolean(filterInstance)
 
-  const runSearch = useCallback(
-    async (q: string) => {
-      if (!canMod || !selected) return
-      setLoading(true)
-      setError(null)
-      const res = await window.nodrift.mods.search(q, selected.mcVersion, selected.loader, 0)
-      if (res.ok) setHits(res.hits)
-      else setError(res.error)
-      setLoading(false)
-    },
-    [canMod, selected]
-  )
-
-  // Load installed + a default listing whenever the target instance changes.
-  useEffect(() => {
-    if (!canMod) {
-      setHits([])
-      return
-    }
-    void refreshInstalled()
-    void runSearch('')
-  }, [canMod, refreshInstalled, runSearch])
-
-  const onSubmit = (e: FormEvent): void => {
-    e.preventDefault()
-    void runSearch(query)
+  const toggle = (list: string[], set: (v: string[]) => void, id: string): void => {
+    set(list.includes(id) ? list.filter((x) => x !== id) : [...list, id])
   }
 
-  const install = async (hit: NdModHit): Promise<void> => {
-    if (!selected) return
-    setBusyIds((prev) => new Set(prev).add(hit.project_id))
-    const res = await window.nodrift.mods.install(
-      selected.id,
-      hit.project_id,
-      hit.title,
-      selected.mcVersion,
-      selected.loader
-    )
-    if (!res.ok) setError(res.error)
-    await refreshInstalled()
-    setBusyIds((prev) => {
-      const next = new Set(prev)
-      next.delete(hit.project_id)
+  const toggleSelect = (hit: NdModHit): void => {
+    setSelected((prev) => {
+      const next = { ...prev }
+      if (next[hit.project_id]) delete next[hit.project_id]
+      else next[hit.project_id] = hit
       return next
     })
   }
 
-  const removeFile = async (filename: string): Promise<void> => {
-    if (!selected) return
-    await window.nodrift.mods.remove(selected.id, filename)
-    await refreshInstalled()
-  }
+  // Instant search, debounced. When an instance is chosen, its version + loader
+  // drive the query (only mods that work for it show).
+  useEffect(() => {
+    const effectiveMc = filterInstance ? filterInstance.mcVersion : mcVersion.trim() || undefined
+    const effectiveLoaders = filterInstance
+      ? [filterInstance.loader]
+      : loaders.length
+        ? loaders
+        : undefined
 
-  const pickJars = async (): Promise<void> => {
-    if (!selected) return
-    const res = await window.nodrift.mods.pickAndInstall(selected.id)
-    if (res.ok) await refreshInstalled()
-    else setError(res.error)
-  }
+    const handle = setTimeout(() => {
+      setLoading(true)
+      setError(null)
+      window.nodrift.mods
+        .search({
+          query,
+          mcVersion: effectiveMc,
+          loaders: effectiveLoaders,
+          categories: categories.length ? categories : undefined,
+          environment: environment === 'all' ? null : environment
+        })
+        .then((res) => {
+          if (res.ok) setHits(res.hits)
+          else setError(res.error)
+          setLoading(false)
+        })
+    }, 300)
+    return () => clearTimeout(handle)
+  }, [query, mcVersion, loaders, categories, environment, filterInstance])
 
-  const onDrop = async (e: DragEvent): Promise<void> => {
-    e.preventDefault()
-    setDragging(false)
-    if (!selected) return
-    const paths = Array.from(e.dataTransfer.files).map((f) => window.nodrift.mods.getFilePath(f))
-    const jars = paths.filter((p) => p.toLowerCase().endsWith('.jar'))
-    if (jars.length === 0) return
-    const res = await window.nodrift.mods.installLocal(selected.id, jars)
-    if (res.ok) await refreshInstalled()
-    else setError(res.error)
-  }
+  const selectedList = Object.values(selected)
 
-  if (!selected) {
+  if (detailId) {
     return (
-      <div className="placeholder">
-        <div className="placeholder__badge">Mods</div>
-        <h1 className="placeholder__title">Mods</h1>
-        <p className="placeholder__text">Select an instance on the Home tab to manage its mods.</p>
-      </div>
-    )
-  }
-
-  if (!canMod) {
-    return (
-      <div className="placeholder">
-        <div className="placeholder__badge">Mods</div>
-        <h1 className="placeholder__title">Mods</h1>
-        <p className="placeholder__text">
-          <strong>{selected.name}</strong> is a Vanilla instance, which can&apos;t load mods. Edit it
-          to use Fabric, Forge or NeoForge.
-        </p>
-      </div>
+      <>
+        <ModDetail
+          projectId={detailId}
+          onBack={() => setDetailId(null)}
+          onInstall={(hit) => setInstallHits([hit])}
+        />
+        {installHits && <InstallModal hits={installHits} onClose={() => setInstallHits(null)} />}
+      </>
     )
   }
 
   return (
-    <div
-      className={'mods' + (dragging ? ' mods--dragging' : '')}
-      onDragOver={(e) => {
-        e.preventDefault()
-        setDragging(true)
-      }}
-      onDragLeave={() => setDragging(false)}
-      onDrop={(e) => void onDrop(e)}
-    >
-      <div className="mods__header">
-        <div>
-          <h1 className="mods__title">Mods</h1>
-          <p className="mods__context">
-            {selected.name} · {selected.mcVersion} · {selected.loader}
-          </p>
-        </div>
-        <button type="button" className="btn btn--ghost btn--sm" onClick={() => void pickJars()}>
-          + Add .jar
-        </button>
-      </div>
-
-      <form className="mods__search" onSubmit={onSubmit}>
+    <div className="mods-layout">
+      <div className="mods-main">
         <input
-          className="input"
+          className="input mods-search-input"
           type="text"
-          placeholder="Search Modrinth…"
+          placeholder="Search Mods…"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
-        <button type="submit" className="btn btn--primary btn--sm">
-          Search
-        </button>
-      </form>
 
-      {error && <p className="mods__error">{error}</p>}
-      {installedFiles.length > 0 && (
-        <div className="mods__installed">
-          <span className="mods__installed-label">Installed ({installedFiles.length})</span>
-          <div className="mods__chips">
-            {installedFiles.map((f) => (
-              <span key={f} className="mod-chip" title={f}>
-                {f}
-                <button
-                  type="button"
-                  className="mod-chip__remove"
-                  aria-label={`Remove ${f}`}
-                  onClick={() => void removeFile(f)}
-                >
-                  ×
-                </button>
-              </span>
-            ))}
+        {selectedList.length > 0 && (
+          <div className="select-bar">
+            <span>{selectedList.length} selected</span>
+            <span className="viewer__spacer" />
+            <button type="button" className="btn btn--ghost btn--sm" onClick={() => setSelected({})}>
+              Clear
+            </button>
+            <button
+              type="button"
+              className="btn btn--primary btn--sm"
+              onClick={() => setInstallHits(selectedList)}
+            >
+              Install selected
+            </button>
           </div>
-        </div>
-      )}
+        )}
 
-      {loading ? (
-        <p className="mods__hint">Searching…</p>
-      ) : hits.length === 0 ? (
-        <p className="mods__hint">No results.</p>
-      ) : (
-        <div className="mod-list">
-          {hits.map((hit) => {
-            const isInstalled = installedIds.has(hit.project_id)
-            const isBusy = busyIds.has(hit.project_id)
-            return (
-              <div key={hit.project_id} className="mod-row">
-                {hit.icon_url ? (
-                  <img className="mod-row__icon" src={hit.icon_url} alt="" />
-                ) : (
-                  <div className="mod-row__icon mod-row__icon--empty" />
-                )}
-                <div className="mod-row__info">
-                  <div className="mod-row__title">
-                    {hit.title}
-                    <span className="mod-row__author">by {hit.author}</span>
-                  </div>
-                  <p className="mod-row__desc">{hit.description}</p>
-                </div>
-                <button
-                  type="button"
-                  className={'btn btn--sm ' + (isInstalled ? 'btn--ghost' : 'btn--primary')}
-                  disabled={isInstalled || isBusy}
-                  onClick={() => void install(hit)}
+        {error && <p className="mods__error">{error}</p>}
+
+        {loading && hits.length === 0 ? (
+          <p className="mods__hint">Searching…</p>
+        ) : hits.length === 0 ? (
+          <p className="mods__hint">No results.</p>
+        ) : (
+          <div className="mod-grid">
+            {hits.map((hit) => {
+              const isSelected = Boolean(selected[hit.project_id])
+              return (
+                <div
+                  key={hit.project_id}
+                  className={'mod-card' + (isSelected ? ' mod-card--selected' : '')}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setDetailId(hit.project_id)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') setDetailId(hit.project_id)
+                  }}
                 >
-                  {isInstalled ? 'Installed' : isBusy ? 'Installing…' : 'Install'}
-                </button>
-              </div>
-            )
-          })}
+                  <input
+                    type="checkbox"
+                    className="mod-card__select"
+                    checked={isSelected}
+                    onClick={(e) => e.stopPropagation()}
+                    onChange={() => toggleSelect(hit)}
+                  />
+                  {hit.icon_url ? (
+                    <img className="mod-card__icon" src={hit.icon_url} alt="" />
+                  ) : (
+                    <div className="mod-card__icon mod-card__icon--empty" />
+                  )}
+                  <div className="mod-card__info">
+                    <div className="mod-card__title">{hit.title}</div>
+                    <p className="mod-card__desc">{hit.description}</p>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn--primary btn--sm"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setInstallHits([hit])
+                    }}
+                  >
+                    Install
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      <aside className="mods-filters">
+        <h2 className="mods-filters__title">Filters</h2>
+
+        <div className="filter-group">
+          <span className="filter-group__label">Environment</span>
+          {ENVIRONMENTS.map((e) => (
+            <label key={e.id} className="filter-row">
+              <input
+                type="radio"
+                name="environment"
+                checked={environment === e.id}
+                onChange={() => setEnvironment(e.id)}
+              />
+              {e.label}
+            </label>
+          ))}
         </div>
-      )}
+
+        <div className="filter-group">
+          <span className="filter-group__label">Version</span>
+          <select
+            className="input"
+            value={filterInstanceId}
+            onChange={(e) => setFilterInstanceId(e.target.value)}
+          >
+            <option value="">Any version</option>
+            {instances
+              .filter((i) => i.loader !== 'vanilla')
+              .map((i) => (
+                <option key={i.id} value={i.id}>
+                  Only for: {i.name}
+                </option>
+              ))}
+          </select>
+          <input
+            className="input"
+            type="text"
+            placeholder="e.g. 1.21.1"
+            value={mcVersion}
+            disabled={lockedToInstance}
+            onChange={(e) => setMcVersion(e.target.value)}
+          />
+        </div>
+
+        <div className="filter-group">
+          <span className="filter-group__label">Mod Loader</span>
+          {lockedToInstance && (
+            <span className="filter-note">Set by instance: {filterInstance?.loader}</span>
+          )}
+          {LOADERS.map((l) => (
+            <label key={l.id} className={'filter-row' + (lockedToInstance ? ' filter-row--off' : '')}>
+              <input
+                type="checkbox"
+                checked={loaders.includes(l.id)}
+                disabled={lockedToInstance}
+                onChange={() => toggle(loaders, setLoaders, l.id)}
+              />
+              {l.label}
+            </label>
+          ))}
+        </div>
+
+        <div className="filter-group">
+          <span className="filter-group__label">Category</span>
+          {CATEGORIES.map((c) => (
+            <label key={c.id} className="filter-row">
+              <input
+                type="checkbox"
+                checked={categories.includes(c.id)}
+                onChange={() => toggle(categories, setCategories, c.id)}
+              />
+              {c.label}
+            </label>
+          ))}
+        </div>
+      </aside>
+
+      {installHits && <InstallModal hits={installHits} onClose={() => setInstallHits(null)} />}
     </div>
   )
 }
