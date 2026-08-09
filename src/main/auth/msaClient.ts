@@ -37,7 +37,7 @@ async function requestToken(body: URLSearchParams): Promise<MsaTokens> {
 
   return {
     accessToken: data.access_token,
-    refreshToken: data.refresh_token,
+    refreshToken: data.refresh_token ?? '',
     expiresAt: Date.now() + data.expires_in * 1000
   }
 }
@@ -55,13 +55,18 @@ export function exchangeCodeForTokens(code: string): Promise<MsaTokens> {
 }
 
 /** Use a stored refresh token to silently obtain a fresh token set. */
-export function refreshTokens(refreshToken: string): Promise<MsaTokens> {
-  return requestToken(
+export async function refreshTokens(refreshToken: string): Promise<MsaTokens> {
+  const tokens = await requestToken(
     new URLSearchParams({
       client_id: AUTH_CONFIG.clientId,
       refresh_token: refreshToken,
       grant_type: 'refresh_token',
+      scope: AUTH_CONFIG.scope,
       redirect_uri: AUTH_CONFIG.redirectUri
     })
   )
+  // login.live.com does not always rotate the refresh token; if the response
+  // omits one, keep re-using the existing token so the session survives.
+  if (!tokens.refreshToken) tokens.refreshToken = refreshToken
+  return tokens
 }

@@ -15,20 +15,36 @@ function tokenFile(): string {
 }
 
 export async function saveRefreshToken(refreshToken: string): Promise<void> {
+  if (!refreshToken) {
+    console.warn('[auth] no refresh token to persist (empty).')
+    return
+  }
   if (!safeStorage.isEncryptionAvailable()) {
     console.warn('[auth] safeStorage unavailable — refresh token not persisted.')
     return
   }
-  const encrypted = safeStorage.encryptString(refreshToken)
-  await fs.writeFile(tokenFile(), encrypted)
+  try {
+    const encrypted = safeStorage.encryptString(refreshToken)
+    await fs.writeFile(tokenFile(), encrypted)
+    console.log('[auth] refresh token saved to', tokenFile())
+  } catch (err) {
+    console.error('[auth] failed to save refresh token:', err)
+  }
 }
 
 export async function loadRefreshToken(): Promise<string | null> {
   try {
-    if (!safeStorage.isEncryptionAvailable()) return null
+    if (!safeStorage.isEncryptionAvailable()) {
+      console.warn('[auth] safeStorage unavailable — cannot restore session.')
+      return null
+    }
     const buffer = await fs.readFile(tokenFile())
-    return safeStorage.decryptString(buffer)
-  } catch {
+    const token = safeStorage.decryptString(buffer)
+    console.log('[auth] loaded stored refresh token from', tokenFile())
+    return token
+  } catch (err) {
+    const code = (err as NodeJS.ErrnoException).code
+    if (code !== 'ENOENT') console.error('[auth] failed to load refresh token:', err)
     return null
   }
 }

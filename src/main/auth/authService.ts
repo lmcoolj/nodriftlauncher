@@ -5,6 +5,7 @@ import { authenticateXbox, authorizeXsts } from './xboxAuth'
 import { fetchImageAsDataUrl, fetchProfile, loginWithXbox } from './minecraftAuth'
 import { promptMicrosoftLogin } from './loginWindow'
 import { clearRefreshToken, loadRefreshToken, saveRefreshToken } from './tokenStore'
+import { AuthError } from './types'
 import type { AuthSession, MinecraftProfile, MinecraftToken, MsaTokens } from './types'
 
 interface CachedSession {
@@ -79,9 +80,14 @@ class AuthService extends EventEmitter {
       const msa = await refreshTokens(refreshToken)
       const cached = await this.runChain(msa)
       return cached.session
-    } catch {
-      await clearRefreshToken()
+    } catch (err) {
       this.current = null
+      // Only discard the stored token when Microsoft actually rejected it.
+      // Transient/network errors keep it so a later launch can retry.
+      if (err instanceof AuthError && err.code === 'MSA_TOKEN') {
+        await clearRefreshToken()
+      }
+      console.error('[auth] restore failed:', err instanceof Error ? err.message : err)
       return null
     }
   }
