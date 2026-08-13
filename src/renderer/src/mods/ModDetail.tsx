@@ -29,10 +29,20 @@ interface ModDetailProps {
     categories: string[]
     versions: string[]
   }) => void
+  /** Label for the back button (defaults to Mods). */
+  backLabel?: string
+  /** Modrinth project-type segment for the "View on Modrinth" link. */
+  urlType?: 'mod' | 'resourcepack' | 'shader'
 }
 
-/** Dedicated page for a single mod: full description, gallery, metadata, install. */
-export function ModDetail({ projectId, onBack, onInstall }: ModDetailProps): React.JSX.Element {
+/** Dedicated page for a single project: full description, gallery, metadata, install. */
+export function ModDetail({
+  projectId,
+  onBack,
+  onInstall,
+  backLabel = '← Back to Mods',
+  urlType = 'mod'
+}: ModDetailProps): React.JSX.Element {
   const [project, setProject] = useState<NdModProject | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -52,7 +62,7 @@ export function ModDetail({ projectId, onBack, onInstall }: ModDetailProps): Rea
     return (
       <div className="mod-detail">
         <button type="button" className="viewer__back" onClick={onBack}>
-          ← Back to Mods
+          {backLabel}
         </button>
         <p className="mods__error">{error}</p>
       </div>
@@ -63,7 +73,7 @@ export function ModDetail({ projectId, onBack, onInstall }: ModDetailProps): Rea
     return (
       <div className="mod-detail">
         <button type="button" className="viewer__back" onClick={onBack}>
-          ← Back to Mods
+          {backLabel}
         </button>
         <p className="mods__hint">Loading…</p>
       </div>
@@ -86,7 +96,10 @@ export function ModDetail({ projectId, onBack, onInstall }: ModDetailProps): Rea
           <h1 className="mod-detail__title">{project.title}</h1>
           <p className="mod-detail__desc">{project.description}</p>
           <p className="mod-detail__stats">
-            {project.downloads.toLocaleString()} downloads · {project.loaders.join(', ')}
+            {project.downloads.toLocaleString()} downloads
+            {urlType === 'mod' && project.loaders.length > 0
+              ? ` · ${project.loaders.join(', ')}`
+              : ''}
           </p>
         </div>
         <div className="mod-detail__actions">
@@ -109,7 +122,9 @@ export function ModDetail({ projectId, onBack, onInstall }: ModDetailProps): Rea
           <button
             type="button"
             className="btn btn--ghost btn--sm"
-            onClick={() => void window.nodrift.mods.openUrl(`https://modrinth.com/mod/${project.slug}`)}
+            onClick={() =>
+              void window.nodrift.mods.openUrl(`https://modrinth.com/${urlType}/${project.slug}`)
+            }
           >
             View on Modrinth
           </button>

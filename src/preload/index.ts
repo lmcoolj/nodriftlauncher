@@ -56,6 +56,12 @@ interface UpdateInstanceInput {
 
 type Result<T> = ({ ok: true } & T) | { ok: false; error: string }
 
+interface ImportProgress {
+  phase: 'reading' | 'downloading' | 'extracting'
+  done: number
+  total: number
+}
+
 type InstallPhase =
   | 'version'
   | 'client'
@@ -98,8 +104,11 @@ interface ModHit {
   versions: string[]
 }
 
+type ProjectType = 'mod' | 'resourcepack' | 'shader'
+
 interface ModSearchOptions {
   query: string
+  projectType?: ProjectType
   mcVersion?: string
   loaders?: string[]
   categories?: string[]
@@ -176,7 +185,12 @@ const api = {
     ): Promise<Result<{ exported: boolean }>> =>
       ipcRenderer.invoke('instances:export', id, format),
     import: (): Promise<Result<{ instance: Instance | null }>> =>
-      ipcRenderer.invoke('instances:import')
+      ipcRenderer.invoke('instances:import'),
+    onImportProgress: (callback: (p: ImportProgress) => void): (() => void) => {
+      const listener = (_e: IpcRendererEvent, p: ImportProgress): void => callback(p)
+      ipcRenderer.on('instances:import-progress', listener)
+      return () => ipcRenderer.removeListener('instances:import-progress', listener)
+    }
   },
   launch: {
     start: (instanceId: string): Promise<Result<Record<string, never>>> =>
@@ -204,6 +218,8 @@ const api = {
   mods: {
     search: (options: ModSearchOptions): Promise<Result<{ hits: ModHit[] }>> =>
       ipcRenderer.invoke('mods:search', options),
+    categories: (projectType: ProjectType): Promise<Result<{ categories: string[] }>> =>
+      ipcRenderer.invoke('mods:categories', projectType),
     project: (id: string): Promise<Result<{ project: ModProject }>> =>
       ipcRenderer.invoke('mods:project', id),
     resolveDeps: (
@@ -219,6 +235,15 @@ const api = {
       ipcRenderer.invoke('mods:install', instanceId, projectId, title),
     openUrl: (url: string): Promise<Result<Record<string, never>>> =>
       ipcRenderer.invoke('mods:open-url', url)
+  },
+  packs: {
+    install: (
+      instanceId: string,
+      projectId: string,
+      projectType: 'resourcepack' | 'shader',
+      title: string
+    ): Promise<Result<Record<string, never>>> =>
+      ipcRenderer.invoke('packs:install', instanceId, projectId, projectType, title)
   },
   instanceFs: {
     listMods: (

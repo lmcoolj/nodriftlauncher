@@ -1,6 +1,13 @@
 import { ipcMain, shell } from 'electron'
-import { getProject, searchMods, type SearchOptions } from '../mods/modrinth'
+import {
+  getCategories,
+  getProject,
+  searchMods,
+  type ProjectType,
+  type SearchOptions
+} from '../mods/modrinth'
 import { installMod, resolveDependencies } from '../mods/modManager'
+import { installPack } from '../mods/packManager'
 
 export function registerModsIpc(): void {
   ipcMain.handle('mods:search', async (_event, options: SearchOptions) => {
@@ -10,6 +17,26 @@ export function registerModsIpc(): void {
       return { ok: false as const, error: (err as Error).message }
     }
   })
+
+  ipcMain.handle('mods:categories', async (_event, projectType: ProjectType) => {
+    try {
+      return { ok: true as const, categories: await getCategories(projectType) }
+    } catch (err) {
+      return { ok: false as const, error: (err as Error).message }
+    }
+  })
+
+  ipcMain.handle(
+    'packs:install',
+    async (_event, instanceId: string, projectId: string, projectType: 'resourcepack' | 'shader', title: string) => {
+      try {
+        await installPack(instanceId, projectId, projectType, title)
+        return { ok: true as const }
+      } catch (err) {
+        return { ok: false as const, error: (err as Error).message }
+      }
+    }
+  )
 
   ipcMain.handle('mods:project', async (_event, id: string) => {
     try {

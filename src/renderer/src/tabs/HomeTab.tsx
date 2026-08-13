@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useAuth } from '../auth/useAuth'
 import { useInstances } from '../instances/useInstances'
 import { useNotifications } from '../useNotifications'
 import { CreateInstanceDialog } from '../instances/CreateInstanceDialog'
 import { InstanceCard } from '../instances/InstanceCard'
+import { ImportProgressModal } from '../instances/ImportProgressModal'
 import { SkinFace } from '../components/SkinFace'
 
 /**
@@ -17,10 +18,22 @@ export function HomeTab(): React.JSX.Element {
 
   const [creating, setCreating] = useState(false)
   const [editing, setEditing] = useState<NdInstance | null>(null)
+  const [importing, setImporting] = useState(false)
+  const [importProgress, setImportProgress] = useState<NdImportProgress | null>(null)
+
+  // Stream import progress from main so the modal bar advances during a .mrpack import.
+  useEffect(() => window.nodrift.instances.onImportProgress(setImportProgress), [])
 
   const handleImport = async (): Promise<void> => {
-    const instance = await importPack()
-    if (instance) notify(`Successfully imported "${instance.name}"`, 'success')
+    setImporting(true)
+    setImportProgress(null)
+    try {
+      const instance = await importPack()
+      if (instance) notify(`Successfully imported "${instance.name}"`, 'success')
+    } finally {
+      setImporting(false)
+      setImportProgress(null)
+    }
   }
 
   return (
@@ -90,6 +103,7 @@ export function HomeTab(): React.JSX.Element {
 
       {creating && <CreateInstanceDialog onClose={() => setCreating(false)} />}
       {editing && <CreateInstanceDialog instance={editing} onClose={() => setEditing(null)} />}
+      {importing && importProgress && <ImportProgressModal progress={importProgress} />}
     </div>
   )
 }

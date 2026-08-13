@@ -1,7 +1,14 @@
 import { useTheme } from '../theme/ThemeProvider'
 import { useAuth } from '../auth/useAuth'
 
-/** Settings: theme switcher and account (sign out). */
+const REPO_URL = 'https://github.com/lmcoolj/nodriftlauncher'
+const APP_VERSION = '0.1.0'
+
+const openExternal = (url: string): void => {
+  void window.nodrift.mods.openUrl(url)
+}
+
+/** Settings: theme switcher, account (sign out), and credits. */
 export function SettingsTab(): React.JSX.Element {
   const { theme, themes, setThemeId } = useTheme()
   const { status, session, login, logout } = useAuth()
@@ -70,6 +77,38 @@ export function SettingsTab(): React.JSX.Element {
             )
           })}
         </div>
+      </section>
+
+      <section className="settings__section">
+        <h2 className="settings__heading">Credits</h2>
+        <p className="settings__hint">
+          NodriftLauncher v{APP_VERSION} — a Minecraft: Java Edition launcher for Windows.
+        </p>
+
+        <div className="credits">
+          <div className="credits__row">
+            <span className="credits__label">Created by</span>
+            <span className="credits__value">lmcoolj</span>
+          </div>
+          <div className="credits__row">
+            <span className="credits__label">Source</span>
+            <button
+              type="button"
+              className="credits__link"
+              onClick={() => openExternal(REPO_URL)}
+            >
+              github.com/lmcoolj/nodriftlauncher
+            </button>
+          </div>
+        </div>
+
+        <p className="settings__hint credits__thanks">
+          Built with Electron &amp; React. Mod, resource-pack and shader data from{' '}
+          <button type="button" className="credits__link" onClick={() => openExternal('https://modrinth.com')}>
+            Modrinth
+          </button>
+          . Not affiliated with Mojang or Microsoft.
+        </p>
       </section>
     </div>
   )

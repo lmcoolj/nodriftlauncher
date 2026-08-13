@@ -23,8 +23,13 @@ function headers(): Record<string, string> {
   return { 'User-Agent': USER_AGENT, Accept: 'application/json' }
 }
 
+/** Modrinth project types this launcher browses. */
+export type ProjectType = 'mod' | 'resourcepack' | 'shader'
+
 export interface SearchOptions {
   query: string
+  /** What to search — mods (default), resource packs, or shaders. */
+  projectType?: ProjectType
   /** Manual MC version filter (empty = any). */
   mcVersion?: string
   /** Loader categories to OR together (fabric/forge/neoforge). */
@@ -37,11 +42,11 @@ export interface SearchOptions {
 }
 
 /**
- * Search Modrinth mods. Facets are AND-ed across sub-arrays and OR-ed within one.
+ * Search Modrinth. Facets are AND-ed across sub-arrays and OR-ed within one.
  * Loaders and content categories both live in the `categories` facet.
  */
 export async function searchMods(options: SearchOptions): Promise<ModHit[]> {
-  const facets: string[][] = [['project_type:mod']]
+  const facets: string[][] = [[`project_type:${options.projectType ?? 'mod'}`]]
   if (options.mcVersion) facets.push([`versions:${options.mcVersion}`])
   if (options.loaders?.length) facets.push(options.loaders.map((l) => `categories:${l}`))
   if (options.categories?.length) facets.push(options.categories.map((c) => `categories:${c}`))
@@ -171,6 +176,51 @@ export async function resolveBestVersion(
       .filter((d) => d.dependency_type === 'required' && d.project_id)
       .map((d) => d.project_id as string)
   }
+}
+
+/**
+ * Resolve the newest project version compatible with an MC version, ignoring the
+ * mod loader. Used for resource packs / shaders, which aren't tied to a loader.
+ */
+export async function resolvePackVersion(
+  projectId: string,
+  mcVersion: string
+): Promise<ResolvedMod | null> {
+  const params = new URLSearchParams({ game_versions: JSON.stringify([mcVersion]) })
+  const res = await fetch(`${API}/project/${projectId}/version?${params.toString()}`, {
+    headers: headers()
+  })
+  if (!res.ok) throw new Error(`Modrinth version lookup failed (${res.status})`)
+  const versions = (await res.json()) as ModrinthVersion[]
+  if (versions.length === 0) return null
+
+  versions.sort((a, b) => (a.date_published < b.date_published ? 1 : -1))
+  const version = versions[0]
+  const file = version.files.find((f) => f.primary) ?? version.files[0]
+  if (!file) return null
+
+  return {
+    versionId: version.id,
+    url: file.url,
+    filename: file.filename,
+    sha1: file.hashes.sha1,
+    sha512: file.hashes.sha512,
+    fileSize: file.size,
+    requiredDependencies: []
+  }
+}
+
+interface CategoryTag {
+  name: string
+  project_type: string
+}
+
+/** Fetch Modrinth's category tags for a project type (populates the Packs filters). */
+export async function getCategories(projectType: ProjectType): Promise<string[]> {
+  const res = await fetch(`${API}/tag/category`, { headers: headers() })
+  if (!res.ok) throw new Error(`Modrinth category lookup failed (${res.status})`)
+  const tags = (await res.json()) as CategoryTag[]
+  return tags.filter((t) => t.project_type === projectType).map((t) => t.name)
 }
 
 /** Fetch just a project's title (for dependency lists). */

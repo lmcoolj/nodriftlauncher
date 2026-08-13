@@ -64,6 +64,12 @@ declare global {
 
   type NdResult<T> = ({ ok: true } & T) | { ok: false; error: string }
 
+  interface NdImportProgress {
+    phase: 'reading' | 'downloading' | 'extracting'
+    done: number
+    total: number
+  }
+
   type NdInstallPhase =
     | 'version'
     | 'client'
@@ -106,8 +112,11 @@ declare global {
     versions: string[]
   }
 
+  type NdProjectType = 'mod' | 'resourcepack' | 'shader'
+
   interface NdModSearchOptions {
     query: string
+    projectType?: NdProjectType
     mcVersion?: string
     loaders?: string[]
     categories?: string[]
@@ -191,6 +200,7 @@ declare global {
           format: 'zip' | 'mrpack'
         ) => Promise<NdResult<{ exported: boolean }>>
         import: () => Promise<NdResult<{ instance: NdInstance | null }>>
+        onImportProgress: (callback: (p: NdImportProgress) => void) => () => void
       }
       launch: {
         start: (instanceId: string) => Promise<NdResult<Record<string, never>>>
@@ -202,6 +212,7 @@ declare global {
       }
       mods: {
         search: (options: NdModSearchOptions) => Promise<NdResult<{ hits: NdModHit[] }>>
+        categories: (projectType: NdProjectType) => Promise<NdResult<{ categories: string[] }>>
         project: (id: string) => Promise<NdResult<{ project: NdModProject }>>
         resolveDeps: (
           instanceId: string,
@@ -213,6 +224,14 @@ declare global {
           title: string
         ) => Promise<NdResult<Record<string, never>>>
         openUrl: (url: string) => Promise<NdResult<Record<string, never>>>
+      }
+      packs: {
+        install: (
+          instanceId: string,
+          projectId: string,
+          projectType: 'resourcepack' | 'shader',
+          title: string
+        ) => Promise<NdResult<Record<string, never>>>
       }
       instanceFs: {
         listMods: (id: string) => Promise<NdResult<{ mods: NdInstanceMod[] }>>

@@ -10,6 +10,15 @@ import type { Loader } from '../metadata/types'
 
 export type ExportFormat = 'zip' | 'mrpack'
 
+/** Coarse import progress, streamed to the renderer so the UI can show a bar. */
+export interface ImportProgress {
+  phase: 'reading' | 'downloading' | 'extracting'
+  done: number
+  total: number
+}
+
+type ProgressFn = (progress: ImportProgress) => void
+
 const SUBFOLDERS = ['mods', 'config', 'resourcepacks'] as const
 
 async function exists(path: string): Promise<boolean> {
@@ -162,7 +171,7 @@ async function extractPrefix(zip: AdmZip, prefix: string, destRoot: string): Pro
   }
 }
 
-async function importMrpack(zip: AdmZip): Promise<Instance> {
+async function importMrpack(zip: AdmZip, onProgress?: ProgressFn): Promise<Instance> {
   const index = JSON.parse(zip.getEntry('modrinth.index.json')!.getData().toString('utf-8'))
   const deps = (index.dependencies ?? {}) as Record<string, string>
   const mcVersion = deps.minecraft
@@ -177,21 +186,26 @@ async function importMrpack(zip: AdmZip): Promise<Instance> {
   })
   const mcDir = instanceMinecraftDir(instance.id)
 
-  // Download referenced files.
-  for (const file of (index.files ?? []) as MrpackFileEntry[]) {
-    const url = file.downloads?.[0]
-    if (!url) continue
-    await downloadFile(url, safeJoin(mcDir, file.path), file.hashes?.sha1)
+  // Download referenced files, reporting one step per downloaded file.
+  const files = ((index.files ?? []) as MrpackFileEntry[]).filter((f) => f.downloads?.[0])
+  let done = 0
+  onProgress?.({ phase: 'downloading', done, total: files.length })
+  for (const file of files) {
+    await downloadFile(file.downloads[0], safeJoin(mcDir, file.path), file.hashes?.sha1)
+    done += 1
+    onProgress?.({ phase: 'downloading', done, total: files.length })
   }
 
   // Apply overrides then client-overrides (layered).
+  onProgress?.({ phase: 'extracting', done: 0, total: 0 })
   await extractPrefix(zip, 'overrides/', mcDir)
   await extractPrefix(zip, 'client-overrides/', mcDir)
 
   return instance
 }
 
-async function importNodriftZip(zip: AdmZip): Promise<Instance> {
+async function importNodriftZip(zip: AdmZip, onProgress?: ProgressFn): Promise<Instance> {
+  onProgress?.({ phase: 'extracting', done: 0, total: 0 })
   const meta = JSON.parse(zip.getEntry('nodrift-instance.json')!.getData().toString('utf-8'))
   const instance = await createInstance({
     name: meta.name || 'Imported',
@@ -211,10 +225,11 @@ async function importNodriftZip(zip: AdmZip): Promise<Instance> {
 }
 
 /** Import a .mrpack or a NodriftLauncher-exported .zip, creating a new instance. */
-export async function importPack(srcPath: string): Promise<Instance> {
+export async function importPack(srcPath: string, onProgress?: ProgressFn): Promise<Instance> {
+  onProgress?.({ phase: 'reading', done: 0, total: 0 })
   const zip = new AdmZip(srcPath)
-  if (zip.getEntry('modrinth.index.json')) return importMrpack(zip)
-  if (zip.getEntry('nodrift-instance.json')) return importNodriftZip(zip)
+  if (zip.getEntry('modrinth.index.json')) return importMrpack(zip, onProgress)
+  if (zip.getEntry('nodrift-instance.json')) return importNodriftZip(zip, onProgress)
   throw new Error(
     'Unrecognized pack. Expected a Modrinth .mrpack or a NodriftLauncher-exported .zip.'
   )

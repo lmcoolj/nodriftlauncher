@@ -89,7 +89,9 @@ export function registerInstanceIpc(): void {
       return { ok: true as const, instance: null }
     }
     try {
-      const instance = await importPack(result.filePaths[0])
+      const instance = await importPack(result.filePaths[0], (progress) => {
+        if (!event.sender.isDestroyed()) event.sender.send('instances:import-progress', progress)
+      })
       return { ok: true as const, instance }
     } catch (err) {
       return { ok: false as const, error: (err as Error).message }
