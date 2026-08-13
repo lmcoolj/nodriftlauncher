@@ -2,7 +2,7 @@ import { useTheme } from '../theme/ThemeProvider'
 import { useAuth } from '../auth/useAuth'
 
 const REPO_URL = 'https://github.com/lmcoolj/nodriftlauncher'
-const APP_VERSION = '0.1.0'
+const APP_VERSION = '0.2.0'
 
 const openExternal = (url: string): void => {
   void window.nodrift.mods.openUrl(url)

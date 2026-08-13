@@ -1,6 +1,6 @@
 const API = 'https://api.modrinth.com/v2'
 // Modrinth asks API consumers to send a descriptive User-Agent.
-const USER_AGENT = 'nodrift_labs/NodriftLauncher/0.1.0'
+const USER_AGENT = 'nodrift_labs/NodriftLauncher/0.2.0'
 
 export interface ModHit {
   project_id: string
