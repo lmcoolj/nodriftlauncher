@@ -80,10 +80,8 @@ export function InstanceCard({ instance, canPlay, onEdit }: InstanceCardProps): 
         if (e.key === 'Enter' || e.key === ' ') open()
       }}
     >
-      <div className="instance-card__head">
-        <span
-          className={'loader-badge' + (instance.loader === 'vanilla' ? ' loader-badge--vanilla' : '')}
-        >
+      <div className={'instance-card__art instance-card__art--' + instance.loader}>
+        <span className={'loader-badge loader-badge--' + instance.loader}>
           {LOADER_LABELS[instance.loader]}
         </span>
         <span
@@ -92,31 +90,32 @@ export function InstanceCard({ instance, canPlay, onEdit }: InstanceCardProps): 
         />
       </div>
 
-      <h3 className="instance-card__name">{instance.name}</h3>
-      <p className="instance-card__meta">
-        {instance.mcVersion}
-        {instance.loaderVersion ? ` · ${instance.loaderVersion}` : ''}
-      </p>
+      <div className="instance-card__body">
+        <h3 className="instance-card__name">{instance.name}</h3>
+        <p className="instance-card__meta">
+          {instance.mcVersion}
+          {instance.loaderVersion ? ` · ${instance.loaderVersion}` : ''}
+        </p>
 
-      <p
-        className={
-          'instance-card__status' + (runtime.state === 'error' ? ' instance-card__status--error' : '')
-        }
-      >
-        {statusText()}
-        {busy && percent !== null ? ` · ${runtime.done}/${runtime.total}` : ''}
-      </p>
+        <p
+          className={
+            'instance-card__status' + (runtime.state === 'error' ? ' instance-card__status--error' : '')
+          }
+        >
+          {statusText()}
+          {busy && percent !== null ? ` · ${runtime.done}/${runtime.total}` : ''}
+        </p>
 
-      {busy && (
-        <div className="progress">
-          <div
-            className={'progress__bar' + (percent === null ? ' progress__bar--indeterminate' : '')}
-            style={percent !== null ? { width: `${percent}%` } : undefined}
-          />
-        </div>
-      )}
+        {busy && (
+          <div className="progress">
+            <div
+              className={'progress__bar' + (percent === null ? ' progress__bar--indeterminate' : '')}
+              style={percent !== null ? { width: `${percent}%` } : undefined}
+            />
+          </div>
+        )}
 
-      <div className="instance-card__actions" onClick={(e) => e.stopPropagation()}>
+        <div className="instance-card__actions" onClick={(e) => e.stopPropagation()}>
         <button type="button" className="btn btn--ghost btn--sm" onClick={() => openFolder(instance.id)}>
           Folder
         </button>
@@ -141,6 +140,7 @@ export function InstanceCard({ instance, canPlay, onEdit }: InstanceCardProps): 
             {busy ? 'Working…' : 'Launch'}
           </button>
         )}
+        </div>
       </div>
 
       {showExport && (

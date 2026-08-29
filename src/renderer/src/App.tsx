@@ -1,3 +1,4 @@
+import { Sidebar } from './components/Sidebar'
 import { TitleBar } from './components/TitleBar'
 import { HomeTab } from './tabs/HomeTab'
 import { ModsTab } from './tabs/ModsTab'
@@ -8,19 +9,22 @@ import { InstanceViewer } from './instances/InstanceViewer'
 import { useNavigation } from './useNavigation'
 
 export function App(): React.JSX.Element {
-  const { tab, instanceId, setTab } = useNavigation()
+  const { tab, instanceId } = useNavigation()
 
   return (
     <div className="app">
-      <TitleBar view={tab} onSelect={setTab} />
-      <main className="content">
-        {tab === 'home' &&
-          (instanceId ? <InstanceViewer instanceId={instanceId} /> : <HomeTab />)}
-        {tab === 'mods' && <ModsTab />}
-        {tab === 'packs' && <PacksTab />}
-        {tab === 'cosmetics' && <CosmeticsTab />}
-        {tab === 'settings' && <SettingsTab />}
-      </main>
+      <Sidebar />
+      <div className="main">
+        <TitleBar />
+        <main className="content">
+          {tab === 'home' &&
+            (instanceId ? <InstanceViewer instanceId={instanceId} /> : <HomeTab />)}
+          {tab === 'mods' && <ModsTab />}
+          {tab === 'packs' && <PacksTab />}
+          {tab === 'cosmetics' && <CosmeticsTab />}
+          {tab === 'settings' && <SettingsTab />}
+        </main>
+      </div>
     </div>
   )
 }

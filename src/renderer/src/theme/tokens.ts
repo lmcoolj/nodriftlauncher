@@ -1,13 +1,14 @@
 /**
- * The design-token contract for a NodriftLauncher theme.
+ * The design-token contract for a Nodrift Client theme.
  *
  * Every theme supplies the same set of tokens; the ThemeProvider maps each one
- * to a CSS custom property (`--nd-<kebab-name>`) on :root, and all styling reads
- * from those variables. Adding a new theme therefore means implementing this
- * interface — no CSS changes required.
+ * to a CSS custom property (`--nd-<name>`) on :root, and all styling reads from
+ * those variables. Adding a theme means implementing this interface — no CSS
+ * changes required.
  *
- * Palette rule (per design): only blue, purple, white, black and grey. NO
- * GRADIENTS anywhere. Keep token values flat colours only.
+ * Look: authentic Minecraft GUI. Flat solid fills (purple + blue), sharp
+ * corners, chunky bevelled edges built from `outline` + `edgeHi` + `edgeLo`.
+ * No smooth gradients.
  */
 export interface ThemeTokens {
   /** App background (window base). */
@@ -16,35 +17,41 @@ export interface ThemeTokens {
   surface: string
   /** Raised surface (cards, inputs, controls). */
   surfaceRaised: string
+  /** Hover/selected surface. */
+  surfaceHover: string
   /** Subtle divider/border. */
   border: string
-  /** Stronger border for emphasis/focus edges. */
+  /** Stronger border for emphasis. */
   borderStrong: string
+  /** Hard near-black GUI outline that rings every bevelled block. */
+  outline: string
+  /** Bevel highlight (top-left inner edge). */
+  edgeHi: string
+  /** Bevel shadow (bottom-right inner edge). */
+  edgeLo: string
   /** Primary text. */
   text: string
   /** Secondary/muted text. */
   textMuted: string
-  /** Primary accent (blue). */
+  /** Dimmest text (timestamps, hints). */
+  textDim: string
+  /** Primary accent — brand + actions. */
   accent: string
-  /** Primary accent hover. */
+  /** Primary accent hover (lighter). */
   accentHover: string
-  /** Secondary accent (purple). */
+  /** Primary accent deep (shadowed edge / pressed). */
+  accentDeep: string
+  /** Secondary accent — activity / info (progress, live states). */
   accent2: string
   /** Secondary accent hover. */
   accent2Hover: string
-  /** Tab hover background. */
-  tabHover: string
-  /** Active tab background. */
-  tabActiveBg: string
-  /** Active tab text. */
-  tabActiveText: string
-  /** Window-control hover (generic). */
-  controlHover: string
-  /** Minimize button hover. */
-  controlMinHover: string
-  /** Close button hover. */
-  controlCloseHover: string
-  /** Drop shadow colour. */
+  /** Secondary accent deep. */
+  accent2Deep: string
+  /** Positive/status colour (signed-in, ready). */
+  ready: string
+  /** Danger colour (close button, destructive actions). */
+  danger: string
+  /** Window drop-shadow colour. */
   shadow: string
 }
 

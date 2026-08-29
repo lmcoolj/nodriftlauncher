@@ -1,5 +1,5 @@
 appId: xyz.nodriftlabs.nodriftlauncher
-productName: NodriftLauncher
+productName: Nodrift Client
 copyright: © nodrift_labs
 
 directories:
@@ -20,7 +20,7 @@ win:
   target:
     - nsis
   icon: build/icon.ico
-  artifactName: ${productName}-Setup-${version}.${ext}
+  artifactName: NodriftClient-Setup-${version}.${ext}
 
 # Custom assisted installer (not the default silent one-click).
 nsis:
@@ -29,10 +29,10 @@ nsis:
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
   createStartMenuShortcut: true
-  shortcutName: NodriftLauncher
+  shortcutName: Nodrift Client
   menuCategory: nodrift_labs
   installerIcon: build/icon.ico
   uninstallerIcon: build/icon.ico
   installerHeaderIcon: build/icon.ico
-  uninstallDisplayName: NodriftLauncher ${version}
+  uninstallDisplayName: Nodrift Client ${version}
   include: build/installer.nsh

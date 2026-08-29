@@ -2,7 +2,7 @@ import { useTheme } from '../theme/ThemeProvider'
 import { useAuth } from '../auth/useAuth'
 
 const REPO_URL = 'https://github.com/lmcoolj/nodriftlauncher'
-const APP_VERSION = '0.2.0'
+const APP_VERSION = '0.3.0'
 
 const openExternal = (url: string): void => {
   void window.nodrift.mods.openUrl(url)
@@ -82,7 +82,7 @@ export function SettingsTab(): React.JSX.Element {
       <section className="settings__section">
         <h2 className="settings__heading">Credits</h2>
         <p className="settings__hint">
-          NodriftLauncher v{APP_VERSION} — a Minecraft: Java Edition launcher for Windows.
+          Nodrift Client v{APP_VERSION} — a Minecraft: Java Edition launcher for Windows.
         </p>
 
         <div className="credits">

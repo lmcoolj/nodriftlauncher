@@ -5,88 +5,78 @@ import type { Theme } from './tokens'
  * the `themes` array — the Settings tab picks it up automatically and the CSS
  * variable system applies it without any further wiring.
  *
- * Palette is restricted to blue / purple / white / black / grey, flat colours,
- * no gradients.
+ * Look: Minecraft GUI. Dark, flat solids, purple + blue accents. `outline` is
+ * the hard near-black ring; `edgeHi`/`edgeLo` build the block bevel.
  */
 
-export const nodriftDark: Theme = {
-  id: 'nodrift-dark',
-  name: 'Nodrift Dark',
-  scheme: 'dark',
-  tokens: {
-    bg: '#0e0f13',
-    surface: '#16171d',
-    surfaceRaised: '#1e2029',
-    border: '#2a2d3a',
-    borderStrong: '#3a3e50',
-    text: '#f2f3f7',
-    textMuted: '#9aa0b0',
-    accent: '#4f7bff',
-    accentHover: '#6b90ff',
-    accent2: '#8b5cf6',
-    accent2Hover: '#a17bff',
-    tabHover: 'rgba(79, 123, 255, 0.14)',
-    tabActiveBg: 'rgba(79, 123, 255, 0.20)',
-    tabActiveText: '#ffffff',
-    controlHover: 'rgba(255, 255, 255, 0.10)',
-    controlMinHover: 'rgba(79, 123, 255, 0.30)',
-    controlCloseHover: '#e5484d',
-    shadow: 'rgba(0, 0, 0, 0.55)'
-  }
-}
+// Shared structural values — the bevel edges and outline are constant across the
+// dark themes, so each theme just swaps the palette + accent pair.
+const OUTLINE = '#060410'
+const EDGE_HI = 'rgba(255, 255, 255, 0.16)'
+const EDGE_LO = 'rgba(0, 0, 0, 0.46)'
+
+const PURPLE = { accent: '#7b4dd8', accentHover: '#a883f4', accentDeep: '#4f2f96' }
+const BLUE = { accent2: '#3a5bd0', accent2Hover: '#7f9bf7', accent2Deep: '#26408f' }
 
 export const nodriftPurple: Theme = {
   id: 'nodrift-purple',
-  name: 'Nodrift Purple',
+  name: 'Amethyst',
   scheme: 'dark',
   tokens: {
-    bg: '#100d18',
-    surface: '#181322',
-    surfaceRaised: '#221a30',
-    border: '#332543',
-    borderStrong: '#4a3560',
-    text: '#f4f1fb',
-    textMuted: '#a99bc0',
-    accent: '#8b5cf6',
-    accentHover: '#a17bff',
-    accent2: '#4f7bff',
-    accent2Hover: '#6b90ff',
-    tabHover: 'rgba(139, 92, 246, 0.16)',
-    tabActiveBg: 'rgba(139, 92, 246, 0.24)',
-    tabActiveText: '#ffffff',
-    controlHover: 'rgba(255, 255, 255, 0.10)',
-    controlMinHover: 'rgba(139, 92, 246, 0.32)',
-    controlCloseHover: '#e5484d',
-    shadow: 'rgba(0, 0, 0, 0.6)'
+    bg: '#0b0913',
+    surface: '#17142a',
+    surfaceRaised: '#211c3a',
+    surfaceHover: '#2b2450',
+    border: '#322a52',
+    borderStrong: '#4a3f6e',
+    outline: OUTLINE,
+    edgeHi: EDGE_HI,
+    edgeLo: EDGE_LO,
+    text: '#ece9f6',
+    textMuted: '#a49dc4',
+    textDim: '#6f6796',
+    accent: PURPLE.accent,
+    accentHover: PURPLE.accentHover,
+    accentDeep: PURPLE.accentDeep,
+    accent2: BLUE.accent2,
+    accent2Hover: BLUE.accent2Hover,
+    accent2Deep: BLUE.accent2Deep,
+    ready: '#57d497',
+    danger: '#d9445f',
+    shadow: 'rgba(0, 0, 0, 0.9)'
   }
 }
 
-export const nodriftLight: Theme = {
-  id: 'nodrift-light',
-  name: 'Nodrift Light',
-  scheme: 'light',
+export const nodriftBlue: Theme = {
+  id: 'nodrift-blue',
+  name: 'Lapis',
+  scheme: 'dark',
   tokens: {
-    bg: '#f4f5f8',
-    surface: '#ffffff',
-    surfaceRaised: '#eceef4',
-    border: '#d5d8e2',
-    borderStrong: '#b9bece',
-    text: '#14151a',
-    textMuted: '#5b6070',
-    accent: '#3b6bff',
-    accentHover: '#2b57e0',
-    accent2: '#7c3aed',
-    accent2Hover: '#6a2bd6',
-    tabHover: 'rgba(59, 107, 255, 0.12)',
-    tabActiveBg: 'rgba(59, 107, 255, 0.16)',
-    tabActiveText: '#14151a',
-    controlHover: 'rgba(0, 0, 0, 0.08)',
-    controlMinHover: 'rgba(59, 107, 255, 0.22)',
-    controlCloseHover: '#e5484d',
-    shadow: 'rgba(0, 0, 0, 0.18)'
+    bg: '#090b16',
+    surface: '#141a2e',
+    surfaceRaised: '#1c2440',
+    surfaceHover: '#243052',
+    border: '#2a3358',
+    borderStrong: '#3c4a78',
+    outline: OUTLINE,
+    edgeHi: EDGE_HI,
+    edgeLo: EDGE_LO,
+    text: '#e9edf8',
+    textMuted: '#9aa6c8',
+    textDim: '#66718f',
+    // Primary = blue, secondary = purple (swapped).
+    accent: BLUE.accent2,
+    accentHover: BLUE.accent2Hover,
+    accentDeep: BLUE.accent2Deep,
+    accent2: PURPLE.accent,
+    accent2Hover: PURPLE.accentHover,
+    accent2Deep: PURPLE.accentDeep,
+    ready: '#57d497',
+    danger: '#d9445f',
+    shadow: 'rgba(0, 0, 0, 0.9)'
   }
 }
 
-export const themes: Theme[] = [nodriftDark, nodriftPurple, nodriftLight]
+export const themes: Theme[] = [nodriftPurple, nodriftBlue]
 
-export const defaultThemeId = nodriftDark.id
+export const defaultThemeId = nodriftPurple.id

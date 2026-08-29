@@ -37,7 +37,7 @@ export function createMainWindow(): BrowserWindow {
     // resized from its edges/corners even though the frame is hidden.
     ...(isWin ? { thickFrame: true } : {}),
     icon: iconPath(),
-    backgroundColor: '#0e0f13',
+    backgroundColor: '#0b0913',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,

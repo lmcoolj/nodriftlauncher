@@ -5,14 +5,13 @@ import { useNotifications } from '../useNotifications'
 import { CreateInstanceDialog } from '../instances/CreateInstanceDialog'
 import { InstanceCard } from '../instances/InstanceCard'
 import { ImportProgressModal } from '../instances/ImportProgressModal'
-import { SkinFace } from '../components/SkinFace'
 
 /**
  * Home view: account area + the instance grid. Clicking a card opens the Instance
  * Viewer; create / import live in the header. Delete and console are in the viewer.
  */
 export function HomeTab(): React.JSX.Element {
-  const { status, session, error: authError, login, logout } = useAuth()
+  const { status, error: authError } = useAuth()
   const { instances, loading, error, importPack } = useInstances()
   const { notify } = useNotifications()
 
@@ -39,37 +38,17 @@ export function HomeTab(): React.JSX.Element {
   return (
     <div className="home">
       <div className="home__topbar">
-        <div className="home__heading">
-          <h1 className="home__title">Your Instances</h1>
+        <div className="page-head__titles">
+          <span className="eyebrow">Your library</span>
+          <h1 className="home__title">Instances</h1>
+        </div>
+        <div className="home__actions">
           <button type="button" className="btn btn--primary" onClick={() => setCreating(true)}>
             + New Instance
           </button>
           <button type="button" className="btn btn--ghost" onClick={() => void handleImport()}>
-            Import Instance
+            Import
           </button>
-        </div>
-
-        <div className="account-area">
-          {status === 'signed-in' && session ? (
-            <div className="account-chip">
-              <SkinFace dataUrl={session.skin?.dataUrl ?? null} size={32} fallbackLabel={session.username} />
-              <span className="account-chip__name">{session.username}</span>
-              <button type="button" className="btn btn--ghost btn--sm" onClick={() => void logout()}>
-                Sign out
-              </button>
-            </div>
-          ) : status === 'restoring' ? (
-            <span className="account-area__hint">Checking sign-in…</span>
-          ) : (
-            <button
-              type="button"
-              className="btn btn--primary btn--sm"
-              onClick={() => void login()}
-              disabled={status === 'signing-in'}
-            >
-              {status === 'signing-in' ? 'Waiting for Microsoft…' : 'Sign In'}
-            </button>
-          )}
         </div>
       </div>
 
