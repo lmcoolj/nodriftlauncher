@@ -64,6 +64,9 @@ class LaunchService extends EventEmitter {
     const instance = await getInstance(instanceId)
     if (!instance) throw new Error('Instance not found.')
 
+    // If the app just started, the silent token refresh may still be in flight —
+    // wait it out so Launch works instantly instead of erroring.
+    await authService.ensureReady()
     const creds = authService.getLaunchCredentials()
     if (!creds) throw new Error('Sign in with Microsoft before launching.')
 

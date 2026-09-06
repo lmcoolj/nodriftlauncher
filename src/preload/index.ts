@@ -145,6 +145,7 @@ const api = {
   },
   auth: {
     getSession: (): Promise<AuthSession | null> => ipcRenderer.invoke('auth:get-session'),
+    getCached: (): Promise<AuthSession | null> => ipcRenderer.invoke('auth:get-cached'),
     restore: (): Promise<AuthResult> => ipcRenderer.invoke('auth:restore'),
     login: (): Promise<AuthResult> => ipcRenderer.invoke('auth:login'),
     logout: (): Promise<{ ok: true }> => ipcRenderer.invoke('auth:logout'),

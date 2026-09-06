@@ -16,6 +16,9 @@ function serializeError(err: unknown): { message: string; code?: string } {
 export function registerAuthIpc(): void {
   ipcMain.handle('auth:get-session', () => authService.getSession())
 
+  // Token-free cached account for instant display on startup.
+  ipcMain.handle('auth:get-cached', () => authService.getCachedSession())
+
   ipcMain.handle('auth:restore', async () => {
     try {
       return { ok: true as const, session: await authService.restore() }

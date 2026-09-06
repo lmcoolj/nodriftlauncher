@@ -175,6 +175,7 @@ declare global {
       }
       auth: {
         getSession: () => Promise<NdAuthSession | null>
+        getCached: () => Promise<NdAuthSession | null>
         restore: () => Promise<NdAuthResult>
         login: () => Promise<NdAuthResult>
         logout: () => Promise<{ ok: true }>

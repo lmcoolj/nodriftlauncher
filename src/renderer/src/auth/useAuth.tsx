@@ -28,24 +28,45 @@ export function AuthProvider({ children }: { children: ReactNode }): React.JSX.E
   // Guards against a signing-in flow being clobbered by an async event.
   const busy = useRef(false)
 
-  // Attempt silent sign-in on mount and subscribe to session changes from main.
+  // Tracks whether the authoritative restore has resolved, so the fast cached
+  // read never overrides a completed sign-in decision.
+  const restoreDone = useRef(false)
+
+  // On mount: show the cached account instantly, then silently refresh the token
+  // in the background and reconcile. Subscribe to session changes from main.
   useEffect(() => {
     let active = true
 
+    // 1. Instant optimistic display from the token-free cache.
+    window.nodrift.auth.getCached().then((cached) => {
+      if (!active || restoreDone.current || !cached) return
+      setSession(cached)
+      setStatus((s) => (s === 'restoring' ? 'signed-in' : s))
+    })
+
+    // 2. Authoritative silent restore (refreshes the real Minecraft token).
     window.nodrift.auth
       .restore()
       .then((result) => {
         if (!active) return
+        restoreDone.current = true
         if (result.ok && result.session) {
           setSession(result.session)
           setStatus('signed-in')
-        } else {
+        } else if (result.ok) {
+          // No valid stored token → definitely signed out; clear optimistic.
+          setSession(null)
           setStatus('signed-out')
-          if (!result.ok) setError(result.error.message)
+        } else {
+          // Transient/network error → keep any optimistic session, surface error.
+          setError(result.error.message)
+          setStatus((s) => (s === 'signed-in' ? s : 'signed-out'))
         }
       })
       .catch(() => {
-        if (active) setStatus('signed-out')
+        if (!active) return
+        restoreDone.current = true
+        setStatus((s) => (s === 'signed-in' ? s : 'signed-out'))
       })
 
     const unsubscribe = window.nodrift.auth.onChanged((next) => {

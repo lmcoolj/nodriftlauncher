@@ -4,7 +4,14 @@ import { exchangeCodeForTokens, refreshTokens } from './msaClient'
 import { authenticateXbox, authorizeXsts } from './xboxAuth'
 import { fetchImageAsDataUrl, fetchProfile, loginWithXbox } from './minecraftAuth'
 import { promptMicrosoftLogin } from './loginWindow'
-import { clearRefreshToken, loadRefreshToken, saveRefreshToken } from './tokenStore'
+import {
+  clearCachedSession,
+  clearRefreshToken,
+  loadCachedSession,
+  loadRefreshToken,
+  saveCachedSession,
+  saveRefreshToken
+} from './tokenStore'
 import { AuthError } from './types'
 import type { AuthSession, MinecraftProfile, MinecraftToken, MsaTokens } from './types'
 
@@ -31,9 +38,26 @@ export interface LaunchCredentials {
  */
 class AuthService extends EventEmitter {
   private current: CachedSession | null = null
+  /** In-flight silent restore, so launch can await it if the user clicks early. */
+  private restorePromise: Promise<AuthSession | null> | null = null
 
   getSession(): AuthSession | null {
     return this.current?.session ?? null
+  }
+
+  /** The last signed-in session cached on disk (token-free) for instant UI. */
+  getCachedSession(): Promise<AuthSession | null> {
+    return loadCachedSession()
+  }
+
+  /**
+   * Resolve once launch credentials are available: returns immediately if a live
+   * session exists, otherwise awaits an in-flight silent restore. Lets the Launch
+   * button be clicked instantly on startup — it just waits out the token refresh.
+   */
+  async ensureReady(): Promise<void> {
+    if (this.current) return
+    if (this.restorePromise) await this.restorePromise.catch(() => null)
   }
 
   /** The current Minecraft access token, or null when signed out. */
@@ -47,6 +71,7 @@ class AuthService extends EventEmitter {
     const profile = await fetchProfile(this.current.mc.accessToken)
     const session = await this.toSession(profile)
     this.current = { ...this.current, profile, session }
+    void saveCachedSession(session)
     this.emit('changed', session)
   }
 
@@ -73,7 +98,16 @@ class AuthService extends EventEmitter {
    * Silent sign-in from a stored refresh token. Returns null (and clears the
    * stored token) if no valid token is available.
    */
-  async restore(): Promise<AuthSession | null> {
+  restore(): Promise<AuthSession | null> {
+    // Coalesce concurrent restores (mount + ensureReady) into one chain run.
+    if (this.restorePromise) return this.restorePromise
+    this.restorePromise = this.doRestore().finally(() => {
+      this.restorePromise = null
+    })
+    return this.restorePromise
+  }
+
+  private async doRestore(): Promise<AuthSession | null> {
     const refreshToken = await loadRefreshToken()
     if (!refreshToken) return null
     try {
@@ -82,10 +116,11 @@ class AuthService extends EventEmitter {
       return cached.session
     } catch (err) {
       this.current = null
-      // Only discard the stored token when Microsoft actually rejected it.
-      // Transient/network errors keep it so a later launch can retry.
+      // Only discard the stored token (and cached account) when Microsoft actually
+      // rejected it. Transient/network errors keep both so a later launch retries.
       if (err instanceof AuthError && err.code === 'MSA_TOKEN') {
         await clearRefreshToken()
+        await clearCachedSession()
       }
       console.error('[auth] restore failed:', err instanceof Error ? err.message : err)
       return null
@@ -95,6 +130,7 @@ class AuthService extends EventEmitter {
   async logout(): Promise<void> {
     this.current = null
     await clearRefreshToken()
+    await clearCachedSession()
     this.emit('changed', null)
   }
 
@@ -109,6 +145,7 @@ class AuthService extends EventEmitter {
     const cached: CachedSession = { msa, mc, profile, session, xuid: xsts.xuid }
     this.current = cached
     await saveRefreshToken(msa.refreshToken)
+    void saveCachedSession(session)
     this.emit('changed', session)
     return cached
   }
