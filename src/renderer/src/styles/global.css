@@ -964,12 +964,13 @@ input[type='radio']:disabled {
 .mods-filters {
   display: flex;
   flex-direction: column;
-  gap: 18px;
-  /* Stay pinned while the results column scrolls. */
+  gap: 14px;
+  /* Stay pinned while the results column scrolls; only scroll internally if the
+     filter list is genuinely taller than the viewport. */
   position: sticky;
   top: 0;
   align-self: start;
-  max-height: calc(100vh - var(--nd-titlebar-h) - 36px);
+  max-height: calc(100vh - var(--nd-titlebar-h) - 48px);
   overflow-y: auto;
 }
 .mods-filters__title {
@@ -983,7 +984,7 @@ input[type='radio']:disabled {
 .filter-group {
   display: flex;
   flex-direction: column;
-  gap: 9px;
+  gap: 7px;
 }
 .filter-group__label {
   font-size: 11px;

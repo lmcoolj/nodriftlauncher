@@ -132,6 +132,6 @@ export const nodriftRedstone = makeTheme('nodrift-redstone', 'Redstone', {
   accent2Deep: '#9a5f1a'
 })
 
-export const themes: Theme[] = [nodriftPurple, nodriftBlue, nodriftEmerald, nodriftRedstone]
+export const themes: Theme[] = [nodriftEmerald, nodriftPurple, nodriftBlue, nodriftRedstone]
 
-export const defaultThemeId = nodriftPurple.id
+export const defaultThemeId = nodriftEmerald.id
