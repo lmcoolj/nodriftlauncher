@@ -152,6 +152,7 @@ declare global {
     description: string
     icon: string | null
     version: string
+    projectId: string | null
   }
 
   interface NdInstancePack {
@@ -224,6 +225,15 @@ declare global {
           instanceId: string,
           projectId: string,
           title: string
+        ) => Promise<NdResult<Record<string, never>>>
+        modVersions: (
+          instanceId: string,
+          projectId: string
+        ) => Promise<NdResult<{ versions: Array<{ versionId: string; versionNumber: string }> }>>
+        switchVersion: (
+          instanceId: string,
+          projectId: string,
+          versionId: string
         ) => Promise<NdResult<Record<string, never>>>
         openUrl: (url: string) => Promise<NdResult<Record<string, never>>>
       }

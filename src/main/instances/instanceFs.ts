@@ -27,6 +27,8 @@ export interface InstanceMod {
   description: string
   icon: string | null
   version: string
+  /** Modrinth project id if installed from the browser (enables switch-version). */
+  projectId: string | null
 }
 
 interface ModMeta {
@@ -144,6 +146,18 @@ export async function listMods(instanceId: string): Promise<InstanceMod[]> {
   }
   let cacheChanged = false
 
+  // Map on-disk filename -> Modrinth project id (only browser-installed mods).
+  let modIndex: Record<string, { filename?: string }> = {}
+  try {
+    modIndex = JSON.parse(await fs.readFile(join(dir, '.nodrift-mods.json'), 'utf-8'))
+  } catch {
+    modIndex = {}
+  }
+  const projectByFile = new Map<string, string>()
+  for (const [pid, entry] of Object.entries(modIndex)) {
+    if (entry.filename) projectByFile.set(entry.filename, pid)
+  }
+
   const mods: InstanceMod[] = []
   for (const f of jars) {
     const full = join(dir, f)
@@ -162,14 +176,16 @@ export async function listMods(instanceId: string): Promise<InstanceMod[]> {
       cache[f] = { mtimeMs: stat.mtimeMs, size: stat.size, meta }
       cacheChanged = true
     }
+    const displayFilename = f.replace(/\.disabled$/i, '')
     mods.push({
-      filename: f.replace(/\.disabled$/i, ''),
+      filename: displayFilename,
       actualName: f,
       enabled: !f.toLowerCase().endsWith('.disabled'),
       name: meta.name,
       description: meta.description,
       icon: meta.icon,
-      version: meta.version
+      version: meta.version,
+      projectId: projectByFile.get(displayFilename) ?? null
     })
   }
 

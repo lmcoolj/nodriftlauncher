@@ -3,7 +3,7 @@ import { basename, join } from 'node:path'
 import { ensureDir, instanceMinecraftDir } from '../paths'
 import { downloadFile } from '../launch/net'
 import { getInstance } from '../instances/instanceStore'
-import { getProjectTitle, resolveBestVersion } from './modrinth'
+import { getProjectTitle, getProjectVersions, resolveBestVersion } from './modrinth'
 
 function modsDir(instanceId: string): string {
   return join(instanceMinecraftDir(instanceId), 'mods')
@@ -136,6 +136,60 @@ export async function installLocalJars(instanceId: string, srcPaths: string[]): 
     added += 1
   }
   return added
+}
+
+/** List installable versions of a project for an instance (for the switch dialog). */
+export async function listModVersions(
+  instanceId: string,
+  projectId: string
+): Promise<Array<{ versionId: string; versionNumber: string }>> {
+  const instance = await getInstance(instanceId)
+  if (!instance || instance.loader === 'vanilla') return []
+  const versions = await getProjectVersions(projectId, instance.mcVersion, instance.loader)
+  return versions.map((v) => ({ versionId: v.versionId, versionNumber: v.versionNumber }))
+}
+
+/** Swap an installed Modrinth mod to a specific version, removing the old jar. */
+export async function switchModVersion(
+  instanceId: string,
+  projectId: string,
+  versionId: string
+): Promise<void> {
+  const instance = await getInstance(instanceId)
+  if (!instance) throw new Error('Instance not found.')
+  if (instance.loader === 'vanilla') {
+    throw new Error('This instance has no mod loader.')
+  }
+
+  const chosen = (await getProjectVersions(projectId, instance.mcVersion, instance.loader)).find(
+    (v) => v.versionId === versionId
+  )
+  if (!chosen) throw new Error('That version is not available for this instance.')
+
+  const dir = modsDir(instanceId)
+  await ensureDir(dir)
+  const index = await readIndex(instanceId)
+  const old = index[projectId]
+
+  await downloadFile(chosen.url, join(dir, chosen.filename), chosen.sha1)
+
+  // Remove the previous jar (enabled or disabled) if the filename changed.
+  if (old?.filename && old.filename !== chosen.filename) {
+    await fs.rm(join(dir, old.filename), { force: true })
+    await fs.rm(join(dir, `${old.filename}.disabled`), { force: true })
+  }
+
+  index[projectId] = {
+    projectId,
+    versionId: chosen.versionId,
+    filename: chosen.filename,
+    title: old?.title ?? (await getProjectTitle(projectId)),
+    url: chosen.url,
+    sha1: chosen.sha1,
+    sha512: chosen.sha512,
+    fileSize: chosen.fileSize
+  }
+  await writeIndex(instanceId, index)
 }
 
 export async function removeMod(instanceId: string, filename: string): Promise<void> {

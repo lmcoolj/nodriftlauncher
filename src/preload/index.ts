@@ -234,6 +234,17 @@ const api = {
       title: string
     ): Promise<Result<Record<string, never>>> =>
       ipcRenderer.invoke('mods:install', instanceId, projectId, title),
+    modVersions: (
+      instanceId: string,
+      projectId: string
+    ): Promise<Result<{ versions: Array<{ versionId: string; versionNumber: string }> }>> =>
+      ipcRenderer.invoke('mods:mod-versions', instanceId, projectId),
+    switchVersion: (
+      instanceId: string,
+      projectId: string,
+      versionId: string
+    ): Promise<Result<Record<string, never>>> =>
+      ipcRenderer.invoke('mods:switch-version', instanceId, projectId, versionId),
     openUrl: (url: string): Promise<Result<Record<string, never>>> =>
       ipcRenderer.invoke('mods:open-url', url)
   },
@@ -259,6 +270,7 @@ const api = {
           description: string
           icon: string | null
           version: string
+          projectId: string | null
         }>
       }>
     > => ipcRenderer.invoke('ifs:list-mods', id),

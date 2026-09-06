@@ -6,7 +6,12 @@ import {
   type ProjectType,
   type SearchOptions
 } from '../mods/modrinth'
-import { installMod, resolveDependencies } from '../mods/modManager'
+import {
+  installMod,
+  listModVersions,
+  resolveDependencies,
+  switchModVersion
+} from '../mods/modManager'
 import { installPack } from '../mods/packManager'
 
 export function registerModsIpc(): void {
@@ -59,6 +64,26 @@ export function registerModsIpc(): void {
     async (_event, instanceId: string, projectId: string, title: string) => {
       try {
         await installMod(instanceId, projectId, title)
+        return { ok: true as const }
+      } catch (err) {
+        return { ok: false as const, error: (err as Error).message }
+      }
+    }
+  )
+
+  ipcMain.handle('mods:mod-versions', async (_event, instanceId: string, projectId: string) => {
+    try {
+      return { ok: true as const, versions: await listModVersions(instanceId, projectId) }
+    } catch (err) {
+      return { ok: false as const, error: (err as Error).message }
+    }
+  })
+
+  ipcMain.handle(
+    'mods:switch-version',
+    async (_event, instanceId: string, projectId: string, versionId: string) => {
+      try {
+        await switchModVersion(instanceId, projectId, versionId)
         return { ok: true as const }
       } catch (err) {
         return { ok: false as const, error: (err as Error).message }

@@ -1,6 +1,18 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNotifications } from '../../useNotifications'
 import { useNavigation } from '../../useNavigation'
+import { SwitchVersionModal } from './SwitchVersionModal'
+
+function SwapIcon(): React.JSX.Element {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17 3l4 4-4 4" />
+      <path d="M21 7H7" />
+      <path d="M7 21l-4-4 4-4" />
+      <path d="M3 17h14" />
+    </svg>
+  )
+}
 
 function TrashIcon(): React.JSX.Element {
   return (
@@ -19,6 +31,7 @@ export function ModsPanel({ instanceId }: { instanceId: string }): React.JSX.Ele
   const [mods, setMods] = useState<NdInstanceMod[]>([])
   const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState('')
+  const [switching, setSwitching] = useState<NdInstanceMod | null>(null)
 
   // `silent` re-reads without blanking the list, so scroll position survives a
   // toggle/delete (and state always mirrors disk — no stale optimistic dupes).
@@ -134,6 +147,17 @@ export function ModsPanel({ instanceId }: { instanceId: string }): React.JSX.Ele
                 <span className="mod-manage-row__desc">{mod.description || mod.filename}</span>
               </div>
               {mod.version ? <span className="mod-manage-row__ver">v{mod.version}</span> : null}
+              {mod.projectId ? (
+                <button
+                  type="button"
+                  className="btn btn--ghost btn--sm mod-manage-row__act"
+                  title="Switch version"
+                  aria-label={`Switch version of ${mod.name || mod.filename}`}
+                  onClick={() => setSwitching(mod)}
+                >
+                  <SwapIcon />
+                </button>
+              ) : null}
               <button
                 type="button"
                 className="btn btn--ghost btn--sm mod-manage-row__del"
@@ -153,6 +177,16 @@ export function ModsPanel({ instanceId }: { instanceId: string }): React.JSX.Ele
             </div>
           ))}
         </div>
+      )}
+
+      {switching && switching.projectId && (
+        <SwitchVersionModal
+          instanceId={instanceId}
+          projectId={switching.projectId}
+          modName={switching.name || switching.filename}
+          onClose={() => setSwitching(null)}
+          onSwitched={() => void load(true)}
+        />
       )}
     </div>
   )

@@ -223,6 +223,51 @@ export async function getCategories(projectType: ProjectType): Promise<string[]>
   return tags.filter((t) => t.project_type === projectType).map((t) => t.name)
 }
 
+export interface ModVersionOption {
+  versionId: string
+  versionNumber: string
+  datePublished: string
+  url: string
+  filename: string
+  sha1?: string
+  sha512?: string
+  fileSize: number
+}
+
+/** List all versions of a project compatible with an instance's MC + loader. */
+export async function getProjectVersions(
+  projectId: string,
+  mcVersion: string,
+  loader: string
+): Promise<ModVersionOption[]> {
+  const params = new URLSearchParams({
+    loaders: JSON.stringify([loader]),
+    game_versions: JSON.stringify([mcVersion])
+  })
+  const res = await fetch(`${API}/project/${projectId}/version?${params.toString()}`, {
+    headers: headers()
+  })
+  if (!res.ok) throw new Error(`Modrinth version list failed (${res.status})`)
+  const versions = (await res.json()) as ModrinthVersion[]
+  const options: ModVersionOption[] = []
+  for (const v of versions) {
+    const file = v.files.find((f) => f.primary) ?? v.files[0]
+    if (!file) continue
+    options.push({
+      versionId: v.id,
+      versionNumber: v.version_number,
+      datePublished: v.date_published,
+      url: file.url,
+      filename: file.filename,
+      sha1: file.hashes.sha1,
+      sha512: file.hashes.sha512,
+      fileSize: file.size
+    })
+  }
+  options.sort((a, b) => (a.datePublished < b.datePublished ? 1 : -1))
+  return options
+}
+
 /** Fetch just a project's title (for dependency lists). */
 export async function getProjectTitle(id: string): Promise<string> {
   try {

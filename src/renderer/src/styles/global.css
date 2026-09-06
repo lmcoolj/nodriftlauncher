@@ -1212,6 +1212,19 @@ input[type='radio']:disabled {
   font-size: 11px;
   color: var(--nd-textDim);
 }
+.mod-manage-row__act {
+  flex: 0 0 auto;
+  padding: 6px;
+  color: var(--nd-textMuted);
+}
+.mod-manage-row__act:hover {
+  color: var(--nd-accentHover);
+  border-color: var(--nd-accent);
+}
+.mod-manage-row__act svg {
+  width: 15px;
+  height: 15px;
+}
 .mod-manage-row__del,
 .pack-row__del {
   flex: 0 0 auto;
