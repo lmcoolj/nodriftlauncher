@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for helping with NodriftLauncher. This is a small project; the guidelines are
+Thanks for helping with Nodrift Client. This is a small project; the guidelines are
 light but there are a few rules that matter.
 
 ## Before you start

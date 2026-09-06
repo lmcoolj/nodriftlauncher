@@ -1,6 +1,6 @@
 # Architecture
 
-How NodriftLauncher is put together. For day-to-day commands and troubleshooting
+How Nodrift Client is put together. For day-to-day commands and troubleshooting
 see [DEVELOPMENT.md](DEVELOPMENT.md); for agent conventions see the root
 [CLAUDE.md](../CLAUDE.md).
 
@@ -139,12 +139,15 @@ updates. There is no skin *catalog* API — the catalog is PNGs bundled in
 ## Renderer structure
 
 Providers wrap the app in order: **Theme → Notifications → Auth → Instances → Launch
-→ Navigation**. The title-bar tabs are `Home`, `Mods`, `Cosmetics`, plus a gear for
-`Settings` (theme + sign out). `useNavigation` also routes to the **Instance Viewer**
-(a sub-view of Home) — a per-instance page with Logs (live game/install output),
-Mods (enable/disable + import), Files (in-app browser), and Packs (resource packs).
-`useNotifications` renders a toast stack. The theme system maps token objects to CSS
-custom properties on `:root`, so restyling is data, not code.
+→ Navigation**. A left **Sidebar** (`components/Sidebar.tsx`) holds the nav —
+`Home`, `Mods`, `Packs`, `Cosmetics` — plus the account chip and a gear for
+`Settings`; the slim titlebar carries the in-app **update button** and window
+controls. `useNavigation` also routes to the **Instance Viewer** (a sub-view of Home)
+— a per-instance page with Logs (live game/install output), Mods (search,
+enable/disable, delete, switch-version, import), Files (in-app browser), and Packs
+(resource packs, with delete). `useNotifications` renders a toast stack. The theme
+system maps token objects to CSS custom properties on `:root` (including the
+`--nd-raise`/`--nd-sink` block bevels), so restyling is data, not code.
 
 ## Packaging (`electron-builder.yml`)
 

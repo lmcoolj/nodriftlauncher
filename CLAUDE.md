@@ -5,8 +5,12 @@ making changes.
 
 ## What this is
 
-An Electron + TypeScript + React Minecraft: Java Edition launcher for Windows. It
-does real Microsoft auth and really launches Vanilla, Fabric, Forge and NeoForge.
+**Nodrift Client** — an Electron + TypeScript + React Minecraft: Java Edition
+launcher for Windows, with an authentic Minecraft-style GUI (block bevels, pixel
+font, sharp corners). It does real Microsoft auth and really launches Vanilla,
+Fabric, Forge and NeoForge. (The npm package name + appId are still
+`nodriftlauncher`/`xyz.nodriftlabs.nodriftlauncher` — only the product/display name
+is "Nodrift Client".)
 
 ## Golden rules
 
@@ -86,8 +90,16 @@ assets/logo.png          app icon source; build/ holds icon.ico + installer.nsh
   resumable and the shared runtime deduped). Guard empty URLs (`if (lib.url) ...`) —
   Forge/NeoForge processor-output libraries have no URL.
 - **Themes** are token sets in `src/renderer/src/theme/themes.ts`; add one to the
-  array and it appears in Settings. Palette rule: blue/purple/white/black/grey, no
-  gradients, no rounded corners.
+  array and it appears in Settings. **Design system = Minecraft GUI:** dark, flat
+  solid fills (purple/blue accents), **sharp corners, no smooth gradients**. Depth
+  comes from block bevels, not shadows-on-hover: every panel/button rings a 2px
+  `outline` and layers `--nd-raise` (light top-left + dark bottom-right insets) or
+  `--nd-sink` (inverted, for wells/inputs). Text carries a hard `--nd-tshadow`
+  drop-shadow; chrome (nav/buttons/labels/tags) is UPPERCASE. **NO hover glows** —
+  hover changes border/background/text colour only. Font is Monocraft (SIL OFL 1.1)
+  bundled in `src/renderer/src/assets/fonts/` and applied app-wide via `--nd-font-mc`.
+  Nav lives in a left **Sidebar** (`components/Sidebar.tsx`); the titlebar is a slim
+  drag strip with the update button + window controls.
 
 ## Verified external endpoints
 
@@ -107,7 +119,8 @@ Do not change these without re-verifying against the source.
 | Fabric | `meta.fabricmc.net/v2/versions/{game,loader,loader/<mc>/<ver>/profile/json}` |
 | NeoForge | `maven.neoforged.net/.../net/neoforged/neoforge` (versions), `.../neoforge-<v>-installer.jar` |
 | Forge | `maven.minecraftforge.net/.../forge/maven-metadata.xml`, `.../forge-<v>-installer.jar` |
-| Modrinth | `api.modrinth.com/v2/search`, `/project/{id}`, `/project/{id}/version` (send a descriptive `User-Agent`) |
+| Modrinth | `api.modrinth.com/v2/search` (facet `project_type:mod\|resourcepack\|shader`), `/project/{id}`, `/project/{id}/version` (versions + switch-version), `/tag/category` (filter list per project_type) — send a descriptive `User-Agent` |
+| Update feed | GitHub Releases `latest.yml` via electron-updater (`publish` in electron-builder.yml → owner `lmcoolj`, repo `nodriftlauncher`) |
 
 ## Gotchas (hard-won)
 
