@@ -317,7 +317,42 @@ button {
 .titlebar__actions {
   display: flex;
   align-items: center;
+  gap: 8px;
   height: 100%;
+}
+
+.update-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--nd-font-mc);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-shadow: var(--nd-tshadow);
+  color: #fff;
+  background: var(--nd-accent);
+  border: 2px solid var(--nd-outline);
+  box-shadow: var(--nd-raise);
+  padding: 5px 10px;
+  cursor: pointer;
+}
+.update-btn:hover {
+  background: var(--nd-accentHover);
+}
+.update-btn--ready {
+  background: var(--nd-ready);
+  color: #0a2a1a;
+}
+.update-btn--busy {
+  background: var(--nd-surfaceRaised);
+  color: var(--nd-textMuted);
+  cursor: default;
+}
+.update-btn__dot {
+  width: 7px;
+  height: 7px;
+  background: currentColor;
 }
 
 .win-controls {

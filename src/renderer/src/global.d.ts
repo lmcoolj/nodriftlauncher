@@ -70,6 +70,14 @@ declare global {
     total: number
   }
 
+  type NdUpdateStatus =
+    | { state: 'dev' }
+    | { state: 'none' }
+    | { state: 'available'; version: string }
+    | { state: 'downloading'; percent: number }
+    | { state: 'downloaded'; version: string }
+    | { state: 'error'; message: string }
+
   type NdInstallPhase =
     | 'version'
     | 'client'
@@ -268,6 +276,12 @@ declare global {
       skins: {
         upload: (variant: 'classic' | 'slim') => Promise<NdResult<{ changed: boolean }>>
         reset: () => Promise<NdResult<Record<string, never>>>
+      }
+      update: {
+        check: () => Promise<NdUpdateStatus>
+        download: () => Promise<NdResult<Record<string, never>>>
+        install: () => Promise<{ ok: true }>
+        onStatus: (callback: (status: NdUpdateStatus) => void) => () => void
       }
       platform: string
     }

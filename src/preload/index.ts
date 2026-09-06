@@ -62,6 +62,14 @@ interface ImportProgress {
   total: number
 }
 
+type UpdateStatus =
+  | { state: 'dev' }
+  | { state: 'none' }
+  | { state: 'available'; version: string }
+  | { state: 'downloading'; percent: number }
+  | { state: 'downloaded'; version: string }
+  | { state: 'error'; message: string }
+
 type InstallPhase =
   | 'version'
   | 'client'
@@ -301,6 +309,16 @@ const api = {
     upload: (variant: 'classic' | 'slim'): Promise<Result<{ changed: boolean }>> =>
       ipcRenderer.invoke('skins:upload', variant),
     reset: (): Promise<Result<Record<string, never>>> => ipcRenderer.invoke('skins:reset')
+  },
+  update: {
+    check: (): Promise<UpdateStatus> => ipcRenderer.invoke('update:check'),
+    download: (): Promise<Result<Record<string, never>>> => ipcRenderer.invoke('update:download'),
+    install: (): Promise<{ ok: true }> => ipcRenderer.invoke('update:install'),
+    onStatus: (callback: (status: UpdateStatus) => void): (() => void) => {
+      const listener = (_e: IpcRendererEvent, status: UpdateStatus): void => callback(status)
+      ipcRenderer.on('update:status', listener)
+      return () => ipcRenderer.removeListener('update:status', listener)
+    }
   },
   platform: process.platform
 }

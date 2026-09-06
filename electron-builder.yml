@@ -6,6 +6,12 @@ directories:
   output: release
   buildResources: build
 
+# Update feed — electron-updater reads latest.yml from these GitHub releases.
+publish:
+  - provider: github
+    owner: lmcoolj
+    repo: nodriftlauncher
+
 # The renderer/main/preload are pre-bundled by electron-vite into out/.
 files:
   - out/**/*

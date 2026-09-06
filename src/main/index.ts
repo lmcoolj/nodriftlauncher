@@ -8,6 +8,7 @@ import { registerLaunchIpc } from './ipc/launchIpc'
 import { registerModsIpc } from './ipc/modsIpc'
 import { registerSkinsIpc } from './ipc/skinsIpc'
 import { registerInstanceFsIpc } from './ipc/instanceFsIpc'
+import { registerUpdateIpc } from './ipc/updateIpc'
 
 function createWindow(): void {
   const mainWindow = createMainWindow()
@@ -58,6 +59,7 @@ app.whenReady().then(() => {
   registerModsIpc()
   registerSkinsIpc()
   registerInstanceFsIpc()
+  registerUpdateIpc()
   createWindow()
 
   app.on('activate', () => {
