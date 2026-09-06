@@ -77,6 +77,61 @@ export const nodriftBlue: Theme = {
   }
 }
 
-export const themes: Theme[] = [nodriftPurple, nodriftBlue]
+// A neutral dark base for the accent-swap themes below (Amethyst/Lapis keep their
+// own tinted surfaces above). Only the accent pair changes per colour theme.
+interface Accents {
+  accent: string
+  accentHover: string
+  accentDeep: string
+  accent2: string
+  accent2Hover: string
+  accent2Deep: string
+}
+
+function makeTheme(id: string, name: string, a: Accents): Theme {
+  return {
+    id,
+    name,
+    scheme: 'dark',
+    tokens: {
+      bg: '#0c0b11',
+      surface: '#17151f',
+      surfaceRaised: '#201d2b',
+      surfaceHover: '#2a2638',
+      border: '#2f2b3d',
+      borderStrong: '#45405c',
+      outline: OUTLINE,
+      edgeHi: EDGE_HI,
+      edgeLo: EDGE_LO,
+      text: '#ece9f2',
+      textMuted: '#a09bb0',
+      textDim: '#6a6580',
+      ...a,
+      ready: '#57d497',
+      danger: '#d9445f',
+      shadow: 'rgba(0, 0, 0, 0.9)'
+    }
+  }
+}
+
+export const nodriftEmerald = makeTheme('nodrift-emerald', 'Emerald', {
+  accent: '#3fb56b',
+  accentHover: '#65d78d',
+  accentDeep: '#227a44',
+  accent2: '#3aa0d0',
+  accent2Hover: '#6cc3ee',
+  accent2Deep: '#23688f'
+})
+
+export const nodriftRedstone = makeTheme('nodrift-redstone', 'Redstone', {
+  accent: '#d0413f',
+  accentHover: '#ec6a68',
+  accentDeep: '#8f2624',
+  accent2: '#e0912f',
+  accent2Hover: '#f2b45a',
+  accent2Deep: '#9a5f1a'
+})
+
+export const themes: Theme[] = [nodriftPurple, nodriftBlue, nodriftEmerald, nodriftRedstone]
 
 export const defaultThemeId = nodriftPurple.id

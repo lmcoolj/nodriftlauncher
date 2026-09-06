@@ -22,30 +22,77 @@ export interface InstanceMod {
   /** The actual on-disk filename. */
   actualName: string
   enabled: boolean
-  /** Display name / description / icon read from the jar's own metadata. */
+  /** Display name / description / icon / version read from the jar's own metadata. */
   name: string
   description: string
   icon: string | null
+  version: string
+}
+
+interface ModMeta {
+  name: string
+  description: string
+  icon: string | null
+  version: string
+}
+
+/**
+ * Extract a quoted value (`key = "..."` or `key = '...'`). Quote-aware so a value
+ * containing an apostrophe (e.g. displayName="Xaero's Minimap") is NOT truncated
+ * at the apostrophe — a bug that used to mangle mod names and logo paths.
+ */
+function tomlString(text: string, key: string): string | undefined {
+  const m = new RegExp(`${key}\\s*=\\s*(?:"([^"]*)"|'([^']*)')`).exec(text)
+  return m ? (m[1] ?? m[2]) : undefined
+}
+
+/** Fabric `icon` can be a string or a size→path map; pick the largest. */
+function fabricIconPath(icon: unknown): string | null {
+  if (typeof icon === 'string') return icon
+  if (icon && typeof icon === 'object') {
+    const entries = Object.entries(icon as Record<string, string>)
+      .map(([size, path]) => [parseInt(size, 10) || 0, path] as const)
+      .sort((a, b) => b[0] - a[0])
+    return entries[0]?.[1] ?? null
+  }
+  return null
+}
+
+function readManifestVersion(zip: AdmZip): string {
+  try {
+    const mf = zip.getEntry('META-INF/MANIFEST.MF')
+    if (!mf) return ''
+    const m = /Implementation-Version:\s*(.+)/.exec(mf.getData().toString('utf-8'))
+    return m ? m[1].trim() : ''
+  } catch {
+    return ''
+  }
 }
 
 /** Read a mod's embedded metadata (Fabric fabric.mod.json / Forge-NeoForge mods.toml). */
-function readModMeta(jarPath: string): Pick<InstanceMod, 'name' | 'description' | 'icon'> {
-  const empty = { name: '', description: '', icon: null as string | null }
+function readModMeta(jarPath: string): ModMeta {
+  const empty: ModMeta = { name: '', description: '', icon: null, version: '' }
   try {
     const zip = new AdmZip(jarPath)
 
+    const readIcon = (path: string | null): string | null => {
+      if (!path) return null
+      const entry = zip.getEntry(path.replace(/^\//, ''))
+      if (!entry) return null
+      const lower = path.toLowerCase()
+      const ext = lower.endsWith('.jpg') || lower.endsWith('.jpeg') ? 'jpeg' : 'png'
+      return `data:image/${ext};base64,${entry.getData().toString('base64')}`
+    }
+
     const fabricEntry = zip.getEntry('fabric.mod.json')
     if (fabricEntry) {
-      const data = JSON.parse(fabricEntry.getData().toString('utf-8'))
-      let icon: string | null = null
-      if (typeof data.icon === 'string') {
-        const iconEntry = zip.getEntry(data.icon)
-        if (iconEntry) icon = `data:image/png;base64,${iconEntry.getData().toString('base64')}`
-      }
+      const data = JSON.parse(fabricEntry.getData().toString('utf-8')) as Record<string, unknown>
+      const rawVer = typeof data.version === 'string' ? data.version : ''
       return {
-        name: data.name ?? data.id ?? '',
+        name: String(data.name ?? data.id ?? ''),
         description: String(data.description ?? '').trim(),
-        icon
+        icon: readIcon(fabricIconPath(data.icon)),
+        version: rawVer.includes('${') ? '' : rawVer
       }
     }
 
@@ -53,18 +100,15 @@ function readModMeta(jarPath: string): Pick<InstanceMod, 'name' | 'description' 
       zip.getEntry('META-INF/neoforge.mods.toml') ?? zip.getEntry('META-INF/mods.toml')
     if (tomlEntry) {
       const text = tomlEntry.getData().toString('utf-8')
-      const displayName = /displayName\s*=\s*["']([^"']+)["']/.exec(text)?.[1]
-      const desc = /description\s*=\s*(?:'''([\s\S]*?)'''|"((?:[^"\\]|\\.)*)")/.exec(text)
-      const logoFile = /logoFile\s*=\s*["']([^"']+)["']/.exec(text)?.[1]
-      let icon: string | null = null
-      if (logoFile) {
-        const iconEntry = zip.getEntry(logoFile)
-        if (iconEntry) icon = `data:image/png;base64,${iconEntry.getData().toString('base64')}`
-      }
+      const descM =
+        /description\s*=\s*(?:'''([\s\S]*?)'''|"""([\s\S]*?)"""|"([^"]*)"|'([^']*)')/.exec(text)
+      let version = tomlString(text, 'version') ?? ''
+      if (!version || version.includes('${')) version = readManifestVersion(zip)
       return {
-        name: displayName ?? '',
-        description: (desc?.[1] ?? desc?.[2] ?? '').trim(),
-        icon
+        name: tomlString(text, 'displayName') ?? '',
+        description: (descM?.[1] ?? descM?.[2] ?? descM?.[3] ?? descM?.[4] ?? '').trim(),
+        icon: readIcon(tomlString(text, 'logoFile') ?? null),
+        version
       }
     }
   } catch {
@@ -73,25 +117,103 @@ function readModMeta(jarPath: string): Pick<InstanceMod, 'name' | 'description' 
   return empty
 }
 
+// Opening every jar with AdmZip is slow for large packs, so metadata is cached
+// on disk keyed by filename + mtime + size. Subsequent list/searches are instant.
+interface ModMetaCacheEntry {
+  mtimeMs: number
+  size: number
+  meta: ModMeta
+}
+type ModMetaCache = Record<string, ModMetaCacheEntry>
+
+function metaCachePath(modsDir: string): string {
+  return join(modsDir, '.nodrift-modmeta.json')
+}
+
 export async function listMods(instanceId: string): Promise<InstanceMod[]> {
   const dir = join(instanceMinecraftDir(instanceId), 'mods')
   await ensureDir(dir)
   const entries = await fs.readdir(dir)
   const jars = entries.filter((f) => /\.jar(\.disabled)?$/i.test(f))
 
-  const mods = jars.map((f) => {
-    const meta = readModMeta(join(dir, f))
-    return {
+  let cache: ModMetaCache = {}
+  try {
+    cache = JSON.parse(await fs.readFile(metaCachePath(dir), 'utf-8')) as ModMetaCache
+  } catch {
+    cache = {}
+  }
+  let cacheChanged = false
+
+  const mods: InstanceMod[] = []
+  for (const f of jars) {
+    const full = join(dir, f)
+    let stat: Awaited<ReturnType<typeof fs.stat>>
+    try {
+      stat = await fs.stat(full)
+    } catch {
+      continue
+    }
+    const cached = cache[f]
+    let meta: ModMeta
+    if (cached && cached.mtimeMs === stat.mtimeMs && cached.size === stat.size) {
+      meta = cached.meta
+    } else {
+      meta = readModMeta(full)
+      cache[f] = { mtimeMs: stat.mtimeMs, size: stat.size, meta }
+      cacheChanged = true
+    }
+    mods.push({
       filename: f.replace(/\.disabled$/i, ''),
       actualName: f,
       enabled: !f.toLowerCase().endsWith('.disabled'),
       name: meta.name,
       description: meta.description,
-      icon: meta.icon
+      icon: meta.icon,
+      version: meta.version
+    })
+  }
+
+  // Drop cache entries for jars that are gone, then persist if anything changed.
+  const present = new Set(jars)
+  for (const key of Object.keys(cache)) {
+    if (!present.has(key)) {
+      delete cache[key]
+      cacheChanged = true
     }
-  })
+  }
+  if (cacheChanged) {
+    try {
+      await fs.writeFile(metaCachePath(dir), JSON.stringify(cache), 'utf-8')
+    } catch {
+      // best-effort cache; ignore write failures
+    }
+  }
 
   return mods.sort((a, b) => (a.name || a.filename).localeCompare(b.name || b.filename))
+}
+
+/** Delete a mod jar (enabled or disabled) and drop any Modrinth index entry. */
+export async function deleteMod(instanceId: string, actualName: string): Promise<void> {
+  const dir = join(instanceMinecraftDir(instanceId), 'mods')
+  await fs.rm(safeResolve(instanceId, join('mods', actualName)), { force: true })
+  const base = actualName.replace(/\.disabled$/i, '')
+  try {
+    const idxPath = join(dir, '.nodrift-mods.json')
+    const idx = JSON.parse(await fs.readFile(idxPath, 'utf-8')) as Record<
+      string,
+      { filename?: string }
+    >
+    let changed = false
+    for (const [key, entry] of Object.entries(idx)) {
+      if (entry.filename === base) {
+        delete idx[key]
+        changed = true
+      }
+    }
+    if (changed) await fs.writeFile(idxPath, JSON.stringify(idx, null, 2), 'utf-8')
+  } catch {
+    // no index — nothing to clean
+  }
 }
 
 /** Toggle a mod between enabled (.jar) and disabled (.jar.disabled). */
@@ -163,6 +285,14 @@ export async function importPacks(instanceId: string, srcPaths: string[]): Promi
   return added
 }
 
+/** Delete a resource pack (zip file or unpacked folder), traversal-guarded. */
+export async function deletePack(instanceId: string, name: string): Promise<void> {
+  await fs.rm(safeResolve(instanceId, join('resourcepacks', name)), {
+    recursive: true,
+    force: true
+  })
+}
+
 // ---- File browser ---------------------------------------------------------
 
 export interface DirEntry {
@@ -180,7 +310,7 @@ export async function browse(
   const dirents = await fs.readdir(dir, { withFileTypes: true })
   const entries: DirEntry[] = []
   for (const d of dirents) {
-    if (d.name === '.nodrift-mods.json') continue
+    if (d.name === '.nodrift-mods.json' || d.name === '.nodrift-modmeta.json') continue
     let size = 0
     if (d.isFile()) {
       try {

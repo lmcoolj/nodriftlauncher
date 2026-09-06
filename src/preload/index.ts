@@ -257,11 +257,16 @@ const api = {
           name: string
           description: string
           icon: string | null
+          version: string
         }>
       }>
     > => ipcRenderer.invoke('ifs:list-mods', id),
     toggleMod: (id: string, actualName: string): Promise<Result<Record<string, never>>> =>
       ipcRenderer.invoke('ifs:toggle-mod', id, actualName),
+    deleteMod: (id: string, actualName: string): Promise<Result<Record<string, never>>> =>
+      ipcRenderer.invoke('ifs:delete-mod', id, actualName),
+    deletePack: (id: string, name: string): Promise<Result<Record<string, never>>> =>
+      ipcRenderer.invoke('ifs:delete-pack', id, name),
     importMods: (id: string): Promise<Result<{ added: number }>> =>
       ipcRenderer.invoke('ifs:import-mods', id),
     listPacks: (

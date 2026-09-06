@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { ModDetail } from '../mods/ModDetail'
 import { PackInstallModal, type PackHit } from '../packs/PackInstallModal'
 import { useInstances } from '../instances/useInstances'
@@ -50,6 +50,8 @@ export function PacksTab(): React.JSX.Element {
   const [available, setAvailable] = useState<string[]>([])
   const [hits, setHits] = useState<NdModHit[]>([])
   const [loading, setLoading] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [hasMore, setHasMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const [detailId, setDetailId] = useState<string | null>(null)
@@ -80,28 +82,48 @@ export function PacksTab(): React.JSX.Element {
     })
   }, [packType])
 
-  // Instant search, debounced. An instance selection pins the MC version.
-  useEffect(() => {
-    const effectiveMc = filterInstance ? filterInstance.mcVersion : mcVersion.trim() || undefined
+  const PAGE = 30
 
+  const buildOptions = useCallback(
+    (offset: number): NdModSearchOptions => {
+      const effectiveMc = filterInstance ? filterInstance.mcVersion : mcVersion.trim() || undefined
+      return {
+        query,
+        projectType: packType,
+        mcVersion: effectiveMc,
+        categories: categories.length ? categories : undefined,
+        offset
+      }
+    },
+    [query, packType, mcVersion, categories, filterInstance]
+  )
+
+  // Instant search, debounced — always fetches page 0.
+  useEffect(() => {
     const handle = setTimeout(() => {
       setLoading(true)
       setError(null)
-      window.nodrift.mods
-        .search({
-          query,
-          projectType: packType,
-          mcVersion: effectiveMc,
-          categories: categories.length ? categories : undefined
-        })
-        .then((res) => {
-          if (res.ok) setHits(res.hits)
-          else setError(res.error)
-          setLoading(false)
-        })
+      window.nodrift.mods.search(buildOptions(0)).then((res) => {
+        if (res.ok) {
+          setHits(res.hits)
+          setHasMore(res.hits.length === PAGE)
+        } else setError(res.error)
+        setLoading(false)
+      })
     }, 300)
     return () => clearTimeout(handle)
-  }, [query, packType, mcVersion, categories, filterInstance])
+  }, [buildOptions])
+
+  const loadMore = (): void => {
+    setLoadingMore(true)
+    window.nodrift.mods.search(buildOptions(hits.length)).then((res) => {
+      if (res.ok) {
+        setHits((prev) => [...prev, ...res.hits])
+        setHasMore(res.hits.length === PAGE)
+      } else setError(res.error)
+      setLoadingMore(false)
+    })
+  }
 
   const selectedList = Object.values(selected)
 
@@ -214,6 +236,19 @@ export function PacksTab(): React.JSX.Element {
                 </div>
               )
             })}
+          </div>
+        )}
+
+        {hasMore && (
+          <div className="load-more">
+            <button
+              type="button"
+              className="btn btn--ghost"
+              disabled={loadingMore}
+              onClick={loadMore}
+            >
+              {loadingMore ? 'Loading…' : 'Load more'}
+            </button>
           </div>
         )}
       </div>

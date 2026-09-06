@@ -63,8 +63,12 @@ async function exportZip(instance: Instance, destPath: string): Promise<void> {
   for (const sub of SUBFOLDERS) {
     const dir = join(mcDir, sub)
     if (await exists(dir)) {
-      // Skip our internal mod index file.
-      zip.addLocalFolder(dir, sub, (name) => !name.endsWith('.nodrift-mods.json'))
+      // Skip our internal mod index + metadata-cache files.
+      zip.addLocalFolder(
+        dir,
+        sub,
+        (name) => !name.endsWith('.nodrift-mods.json') && !name.endsWith('.nodrift-modmeta.json')
+      )
     }
   }
 

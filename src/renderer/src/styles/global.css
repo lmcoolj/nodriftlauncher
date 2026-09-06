@@ -46,8 +46,9 @@
   --nd-danger: #d9445f;
   --nd-shadow: rgba(0, 0, 0, 0.9);
 
-  --nd-raise: inset 2px 2px 0 var(--nd-edgeHi), inset -2px -2px 0 var(--nd-edgeLo);
-  --nd-sink: inset 2px 2px 0 var(--nd-edgeLo), inset -2px -2px 0 var(--nd-edgeHi);
+  /* Chunky block bevel (thicker = more Minecraft). */
+  --nd-raise: inset 3px 3px 0 var(--nd-edgeHi), inset -3px -3px 0 var(--nd-edgeLo);
+  --nd-sink: inset 3px 3px 0 var(--nd-edgeLo), inset -3px -3px 0 var(--nd-edgeHi);
 }
 
 * {
@@ -1205,6 +1206,34 @@ input[type='radio']:disabled {
 .mod-manage-row__toggle {
   width: 22px;
   height: 22px;
+}
+.mod-manage-row__ver {
+  flex: 0 0 auto;
+  font-size: 11px;
+  color: var(--nd-textDim);
+}
+.mod-manage-row__del,
+.pack-row__del {
+  flex: 0 0 auto;
+  padding: 6px;
+  color: var(--nd-textMuted);
+}
+.mod-manage-row__del:hover,
+.pack-row__del:hover {
+  color: #fff;
+  background: var(--nd-danger);
+  border-color: var(--nd-danger);
+}
+.mod-manage-row__del svg,
+.pack-row__del svg {
+  width: 15px;
+  height: 15px;
+}
+
+.load-more {
+  display: flex;
+  justify-content: center;
+  padding: 18px 0 6px;
 }
 
 .pack-row {

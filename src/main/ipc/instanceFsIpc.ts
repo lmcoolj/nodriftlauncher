@@ -1,6 +1,8 @@
 import { BrowserWindow, dialog, ipcMain } from 'electron'
 import {
   browse,
+  deleteMod,
+  deletePack,
   importMods,
   importPacks,
   listMods,
@@ -38,6 +40,24 @@ export function registerInstanceFsIpc(): void {
   ipcMain.handle('ifs:toggle-mod', async (_e, id: string, actualName: string) => {
     try {
       await toggleMod(id, actualName)
+      return { ok: true as const }
+    } catch (err) {
+      return { ok: false as const, error: (err as Error).message }
+    }
+  })
+
+  ipcMain.handle('ifs:delete-mod', async (_e, id: string, actualName: string) => {
+    try {
+      await deleteMod(id, actualName)
+      return { ok: true as const }
+    } catch (err) {
+      return { ok: false as const, error: (err as Error).message }
+    }
+  })
+
+  ipcMain.handle('ifs:delete-pack', async (_e, id: string, name: string) => {
+    try {
+      await deletePack(id, name)
       return { ok: true as const }
     } catch (err) {
       return { ok: false as const, error: (err as Error).message }

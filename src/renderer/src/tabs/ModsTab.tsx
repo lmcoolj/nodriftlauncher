@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { InstallModal, type InstallHit } from '../mods/InstallModal'
 import { ModDetail } from '../mods/ModDetail'
 import { useInstances } from '../instances/useInstances'
@@ -44,6 +44,8 @@ export function ModsTab(): React.JSX.Element {
 
   const [hits, setHits] = useState<NdModHit[]>([])
   const [loading, setLoading] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [hasMore, setHasMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const [detailId, setDetailId] = useState<string | null>(null)
@@ -66,35 +68,56 @@ export function ModsTab(): React.JSX.Element {
     })
   }
 
-  // Instant search, debounced. When an instance is chosen, its version + loader
-  // drive the query (only mods that work for it show).
-  useEffect(() => {
-    const effectiveMc = filterInstance ? filterInstance.mcVersion : mcVersion.trim() || undefined
-    const effectiveLoaders = filterInstance
-      ? [filterInstance.loader]
-      : loaders.length
-        ? loaders
-        : undefined
+  const PAGE = 30
 
+  // Build the search options for a given offset (page). When an instance is
+  // chosen, its version + loader drive the query (only mods that work for it).
+  const buildOptions = useCallback(
+    (offset: number): NdModSearchOptions => {
+      const effectiveMc = filterInstance ? filterInstance.mcVersion : mcVersion.trim() || undefined
+      const effectiveLoaders = filterInstance
+        ? [filterInstance.loader]
+        : loaders.length
+          ? loaders
+          : undefined
+      return {
+        query,
+        mcVersion: effectiveMc,
+        loaders: effectiveLoaders,
+        categories: categories.length ? categories : undefined,
+        environment: environment === 'all' ? null : environment,
+        offset
+      }
+    },
+    [query, mcVersion, loaders, categories, environment, filterInstance]
+  )
+
+  // Instant search, debounced — always fetches page 0.
+  useEffect(() => {
     const handle = setTimeout(() => {
       setLoading(true)
       setError(null)
-      window.nodrift.mods
-        .search({
-          query,
-          mcVersion: effectiveMc,
-          loaders: effectiveLoaders,
-          categories: categories.length ? categories : undefined,
-          environment: environment === 'all' ? null : environment
-        })
-        .then((res) => {
-          if (res.ok) setHits(res.hits)
-          else setError(res.error)
-          setLoading(false)
-        })
+      window.nodrift.mods.search(buildOptions(0)).then((res) => {
+        if (res.ok) {
+          setHits(res.hits)
+          setHasMore(res.hits.length === PAGE)
+        } else setError(res.error)
+        setLoading(false)
+      })
     }, 300)
     return () => clearTimeout(handle)
-  }, [query, mcVersion, loaders, categories, environment, filterInstance])
+  }, [buildOptions])
+
+  const loadMore = (): void => {
+    setLoadingMore(true)
+    window.nodrift.mods.search(buildOptions(hits.length)).then((res) => {
+      if (res.ok) {
+        setHits((prev) => [...prev, ...res.hits])
+        setHasMore(res.hits.length === PAGE)
+      } else setError(res.error)
+      setLoadingMore(false)
+    })
+  }
 
   const selectedList = Object.values(selected)
 
@@ -189,6 +212,19 @@ export function ModsTab(): React.JSX.Element {
                 </div>
               )
             })}
+          </div>
+        )}
+
+        {hasMore && (
+          <div className="load-more">
+            <button
+              type="button"
+              className="btn btn--ghost"
+              disabled={loadingMore}
+              onClick={loadMore}
+            >
+              {loadingMore ? 'Loading…' : 'Load more'}
+            </button>
           </div>
         )}
       </div>

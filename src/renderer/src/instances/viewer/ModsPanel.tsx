@@ -1,45 +1,61 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNotifications } from '../../useNotifications'
+import { useNavigation } from '../../useNavigation'
 
-/** Per-instance mod management: search, enable/disable, import, open folder. */
+function TrashIcon(): React.JSX.Element {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 6h18" />
+      <path d="M8 6V4h8v2" />
+      <path d="M6 6l1 14h10l1-14" />
+    </svg>
+  )
+}
+
+/** Per-instance mod management: search, enable/disable, delete, import. */
 export function ModsPanel({ instanceId }: { instanceId: string }): React.JSX.Element {
   const { notify } = useNotifications()
+  const { setTab } = useNavigation()
   const [mods, setMods] = useState<NdInstanceMod[]>([])
   const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState('')
 
-  const refresh = useCallback(async () => {
-    setLoading(true)
-    const res = await window.nodrift.instanceFs.listMods(instanceId)
-    if (res.ok) setMods(res.mods)
-    setLoading(false)
-  }, [instanceId])
+  // `silent` re-reads without blanking the list, so scroll position survives a
+  // toggle/delete (and state always mirrors disk — no stale optimistic dupes).
+  const load = useCallback(
+    async (silent = false) => {
+      if (!silent) setLoading(true)
+      const res = await window.nodrift.instanceFs.listMods(instanceId)
+      if (res.ok) setMods(res.mods)
+      else notify(res.error, 'error')
+      if (!silent) setLoading(false)
+    },
+    [instanceId, notify]
+  )
 
   useEffect(() => {
-    void refresh()
-  }, [refresh])
+    void load()
+  }, [load])
 
-  // Toggle updates the one row in place (instead of reloading the whole list),
-  // so the scroll position is preserved when disabling several mods in a row.
   const toggle = async (mod: NdInstanceMod): Promise<void> => {
     const res = await window.nodrift.instanceFs.toggleMod(instanceId, mod.actualName)
     if (!res.ok) {
       notify(res.error, 'error')
       return
     }
-    setMods((prev) =>
-      prev.map((m) =>
-        m.actualName === mod.actualName
-          ? {
-              ...m,
-              enabled: !m.enabled,
-              actualName: m.enabled
-                ? `${m.actualName}.disabled`
-                : m.actualName.replace(/\.disabled$/i, '')
-            }
-          : m
-      )
-    )
+    await load(true)
+  }
+
+  const remove = async (mod: NdInstanceMod): Promise<void> => {
+    const label = mod.name || mod.filename
+    if (!window.confirm(`Delete "${label}"? This removes the jar from this instance.`)) return
+    const res = await window.nodrift.instanceFs.deleteMod(instanceId, mod.actualName)
+    if (!res.ok) {
+      notify(res.error, 'error')
+      return
+    }
+    notify(`Deleted ${label}`, 'success')
+    await load(true)
   }
 
   const importMods = async (): Promise<void> => {
@@ -47,7 +63,7 @@ export function ModsPanel({ instanceId }: { instanceId: string }): React.JSX.Ele
     if (res.ok && res.added > 0) {
       notify(`Imported ${res.added} mod${res.added === 1 ? '' : 's'}`, 'success')
     }
-    await refresh()
+    await load(true)
   }
 
   const filtered = useMemo(() => {
@@ -76,8 +92,11 @@ export function ModsPanel({ instanceId }: { instanceId: string }): React.JSX.Ele
         >
           Open Folder
         </button>
-        <button type="button" className="btn btn--primary btn--sm" onClick={() => void importMods()}>
-          Import Mods
+        <button type="button" className="btn btn--ghost btn--sm" onClick={() => void importMods()}>
+          Import Jar
+        </button>
+        <button type="button" className="btn btn--primary btn--sm" onClick={() => setTab('mods')}>
+          Install Mods
         </button>
       </div>
 
@@ -100,9 +119,10 @@ export function ModsPanel({ instanceId }: { instanceId: string }): React.JSX.Ele
       ) : (
         <div className="managed-list">
           {filtered.map((mod) => (
-            <label
-              key={mod.filename}
+            <div
+              key={mod.actualName}
               className={'mod-manage-row' + (mod.enabled ? '' : ' mod-manage-row--off')}
+              title={`${mod.filename}${mod.version ? ` · v${mod.version}` : ''}`}
             >
               {mod.icon ? (
                 <img className="mod-manage-row__icon" src={mod.icon} alt="" />
@@ -113,13 +133,24 @@ export function ModsPanel({ instanceId }: { instanceId: string }): React.JSX.Ele
                 <span className="mod-manage-row__name">{mod.name || mod.filename}</span>
                 <span className="mod-manage-row__desc">{mod.description || mod.filename}</span>
               </div>
+              {mod.version ? <span className="mod-manage-row__ver">v{mod.version}</span> : null}
+              <button
+                type="button"
+                className="btn btn--ghost btn--sm mod-manage-row__del"
+                title="Delete mod"
+                aria-label={`Delete ${mod.name || mod.filename}`}
+                onClick={() => void remove(mod)}
+              >
+                <TrashIcon />
+              </button>
               <input
                 type="checkbox"
                 className="mod-manage-row__toggle"
                 checked={mod.enabled}
+                aria-label={`${mod.enabled ? 'Disable' : 'Enable'} ${mod.name || mod.filename}`}
                 onChange={() => void toggle(mod)}
               />
-            </label>
+            </div>
           ))}
         </div>
       )}

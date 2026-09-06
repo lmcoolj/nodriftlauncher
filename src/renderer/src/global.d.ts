@@ -151,6 +151,7 @@ declare global {
     name: string
     description: string
     icon: string | null
+    version: string
   }
 
   interface NdInstancePack {
@@ -239,6 +240,11 @@ declare global {
           id: string,
           actualName: string
         ) => Promise<NdResult<Record<string, never>>>
+        deleteMod: (
+          id: string,
+          actualName: string
+        ) => Promise<NdResult<Record<string, never>>>
+        deletePack: (id: string, name: string) => Promise<NdResult<Record<string, never>>>
         importMods: (id: string) => Promise<NdResult<{ added: number }>>
         listPacks: (id: string) => Promise<NdResult<{ packs: NdInstancePack[] }>>
         importPacks: (id: string) => Promise<NdResult<{ added: number }>>
