@@ -4,19 +4,13 @@ import { useNavigation } from '../useNavigation'
 import { SkinFace } from './SkinFace'
 import { SettingsIcon } from './icons'
 import { MAIN_TABS, TAB_LABELS, type MainTab } from '../navigation'
+import logoUrl from '../assets/logo.png'
 
-/** Blocky pixel "N" mark — placeholder until the real logo lands. */
+/** The Nodrift Client emerald-crystal mark. */
 function BrandMark(): React.JSX.Element {
   return (
     <span className="brand__mark">
-      <svg width="18" height="18" viewBox="0 0 6 6" fill="#fff" shapeRendering="crispEdges">
-        <rect x="1" y="0" width="1" height="6" />
-        <rect x="4" y="0" width="1" height="6" />
-        <rect x="2" y="1" width="1" height="1" />
-        <rect x="2" y="2" width="1" height="1" />
-        <rect x="3" y="3" width="1" height="1" />
-        <rect x="3" y="4" width="1" height="1" />
-      </svg>
+      <img src={logoUrl} alt="" />
     </span>
   )
 }
