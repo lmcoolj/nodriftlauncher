@@ -129,7 +129,13 @@ export function ModsTab(): React.JSX.Element {
           onBack={() => setDetailId(null)}
           onInstall={(hit) => setInstallHits([hit])}
         />
-        {installHits && <InstallModal hits={installHits} onClose={() => setInstallHits(null)} />}
+        {installHits && (
+          <InstallModal
+            hits={installHits}
+            onClose={() => setInstallHits(null)}
+            onInstalled={() => setSelected({})}
+          />
+        )}
       </>
     )
   }

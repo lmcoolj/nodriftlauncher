@@ -22,6 +22,8 @@ export interface InstallHit {
 interface InstallModalProps {
   hits: InstallHit[]
   onClose: () => void
+  /** Called after a successful install (e.g. to clear a multi-select). */
+  onInstalled?: () => void
 }
 
 /**
@@ -29,7 +31,7 @@ interface InstallModalProps {
  * required dependencies that will be auto-installed (for a single mod), and only
  * offers instances compatible with every selected mod.
  */
-export function InstallModal({ hits, onClose }: InstallModalProps): React.JSX.Element {
+export function InstallModal({ hits, onClose, onInstalled }: InstallModalProps): React.JSX.Element {
   const { instances } = useInstances()
   const { notify } = useNotifications()
   const [busy, setBusy] = useState<string | null>(null)
@@ -84,6 +86,7 @@ export function InstallModal({ hits, onClose }: InstallModalProps): React.JSX.El
       batch ? `Installed ${hits.length} mods to ${target.name}` : `Installed ${hits[0].title} to ${target.name}`,
       'success'
     )
+    onInstalled?.()
     onClose()
   }
 

@@ -152,6 +152,7 @@ export function PacksTab(): React.JSX.Element {
             hits={installHits}
             projectType={packType}
             onClose={() => setInstallHits(null)}
+            onInstalled={() => setSelected({})}
           />
         )}
       </>

@@ -111,5 +111,11 @@ export function spawnGame(
   args: string[],
   gameDir: string
 ): ChildProcess {
-  return spawn(javaExe, args, { cwd: gameDir })
+  // detached + unref so the game keeps running after the launcher is closed.
+  // Windows: a detached child runs in its own process group and is not torn down
+  // when the parent exits. stdio stays piped so logs stream while the launcher is
+  // open; once it closes the pipes just go away and the game plays on.
+  const child = spawn(javaExe, args, { cwd: gameDir, detached: true })
+  child.unref()
+  return child
 }

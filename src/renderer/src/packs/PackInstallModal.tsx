@@ -15,6 +15,8 @@ interface PackInstallModalProps {
   hits: PackHit[]
   projectType: 'resourcepack' | 'shader'
   onClose: () => void
+  /** Called after a successful install (e.g. to clear a multi-select). */
+  onInstalled?: () => void
 }
 
 const KIND_LABEL: Record<'resourcepack' | 'shader', string> = {
@@ -30,7 +32,8 @@ const KIND_LABEL: Record<'resourcepack' | 'shader', string> = {
 export function PackInstallModal({
   hits,
   projectType,
-  onClose
+  onClose,
+  onInstalled
 }: PackInstallModalProps): React.JSX.Element {
   const { instances } = useInstances()
   const { notify } = useNotifications()
@@ -72,6 +75,7 @@ export function PackInstallModal({
         : `Installed ${hits[0].title} to ${target.name}`,
       'success'
     )
+    onInstalled?.()
     onClose()
   }
 
