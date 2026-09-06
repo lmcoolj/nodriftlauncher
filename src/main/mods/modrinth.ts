@@ -1,6 +1,8 @@
+import { app } from 'electron'
+
 const API = 'https://api.modrinth.com/v2'
 // Modrinth asks API consumers to send a descriptive User-Agent.
-const USER_AGENT = 'nodrift_labs/NodriftClient/0.3.1'
+const USER_AGENT = `nodrift_labs/NodriftClient/${app.getVersion()}`
 
 export interface ModHit {
   project_id: string

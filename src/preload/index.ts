@@ -151,6 +151,9 @@ const api = {
     toggleMaximize: (): void => ipcRenderer.send('window:toggle-maximize'),
     isMaximized: (): Promise<boolean> => ipcRenderer.invoke('window:is-maximized')
   },
+  app: {
+    getVersion: (): Promise<string> => ipcRenderer.invoke('app:get-version')
+  },
   auth: {
     getSession: (): Promise<AuthSession | null> => ipcRenderer.invoke('auth:get-session'),
     getCached: (): Promise<AuthSession | null> => ipcRenderer.invoke('auth:get-cached'),

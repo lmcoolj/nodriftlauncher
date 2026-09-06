@@ -182,6 +182,9 @@ declare global {
         toggleMaximize: () => void
         isMaximized: () => Promise<boolean>
       }
+      app: {
+        getVersion: () => Promise<string>
+      }
       auth: {
         getSession: () => Promise<NdAuthSession | null>
         getCached: () => Promise<NdAuthSession | null>

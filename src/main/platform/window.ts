@@ -81,4 +81,7 @@ export function registerWindowControls(): void {
   ipcMain.handle('window:is-maximized', (event) => {
     return windowFromEvent(event)?.isMaximized() ?? false
   })
+
+  // Single source of truth for the app version (from package.json).
+  ipcMain.handle('app:get-version', () => app.getVersion())
 }

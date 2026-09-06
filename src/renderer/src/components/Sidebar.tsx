@@ -1,10 +1,9 @@
+import { useEffect, useState } from 'react'
 import { useAuth } from '../auth/useAuth'
 import { useNavigation } from '../useNavigation'
 import { SkinFace } from './SkinFace'
 import { SettingsIcon } from './icons'
 import { MAIN_TABS, TAB_LABELS, type MainTab } from '../navigation'
-
-const APP_VERSION = 'v0.3.1'
 
 /** Blocky pixel "N" mark — placeholder until the real logo lands. */
 function BrandMark(): React.JSX.Element {
@@ -57,6 +56,11 @@ const NAV_ICONS: Record<MainTab, React.JSX.Element> = {
 export function Sidebar(): React.JSX.Element {
   const { tab, setTab } = useNavigation()
   const { status, session, login } = useAuth()
+  const [version, setVersion] = useState('')
+
+  useEffect(() => {
+    window.nodrift.app.getVersion().then(setVersion)
+  }, [])
 
   return (
     <aside className="sidebar">
@@ -64,7 +68,7 @@ export function Sidebar(): React.JSX.Element {
         <BrandMark />
         <span className="brand__name">
           Nodrift <b>Client</b>
-          <span className="brand__tag">{APP_VERSION}</span>
+          {version ? <span className="brand__tag">v{version}</span> : null}
         </span>
       </div>
 

@@ -1,17 +1,52 @@
+import { useEffect, useState } from 'react'
 import { useTheme } from '../theme/ThemeProvider'
 import { useAuth } from '../auth/useAuth'
 
 const REPO_URL = 'https://github.com/lmcoolj/nodriftlauncher'
-const APP_VERSION = '0.3.1'
 
 const openExternal = (url: string): void => {
   void window.nodrift.mods.openUrl(url)
 }
 
-/** Settings: theme switcher, account (sign out), and credits. */
+/** Settings: theme switcher, account, updates, and credits. */
 export function SettingsTab(): React.JSX.Element {
   const { theme, themes, setThemeId } = useTheme()
   const { status, session, login, logout } = useAuth()
+
+  const [version, setVersion] = useState('')
+  const [update, setUpdate] = useState<NdUpdateStatus | null>(null)
+  const [checking, setChecking] = useState(false)
+
+  useEffect(() => {
+    window.nodrift.app.getVersion().then(setVersion)
+    return window.nodrift.update.onStatus(setUpdate)
+  }, [])
+
+  const checkForUpdates = async (): Promise<void> => {
+    setChecking(true)
+    setUpdate(await window.nodrift.update.check())
+    setChecking(false)
+  }
+
+  const updateMessage = (): string => {
+    if (checking) return 'Checking for updates…'
+    switch (update?.state) {
+      case 'dev':
+        return 'In-app updates are only available in the installed app.'
+      case 'none':
+        return "You're on the latest version."
+      case 'available':
+        return `Version ${update.version} is available.`
+      case 'downloading':
+        return `Downloading… ${update.percent}%`
+      case 'downloaded':
+        return 'Update downloaded — restart to finish.'
+      case 'error':
+        return `Couldn't check for updates: ${update.message}`
+      default:
+        return ''
+    }
+  }
 
   return (
     <div className="settings">
@@ -42,6 +77,42 @@ export function SettingsTab(): React.JSX.Element {
             </button>
           </div>
         )}
+      </section>
+
+      <section className="settings__section">
+        <h2 className="settings__heading">Updates</h2>
+        <div className="settings__account">
+          <span className="settings__hint">
+            Current version <strong>v{version}</strong>
+            {updateMessage() ? ` · ${updateMessage()}` : ''}
+          </span>
+          {update?.state === 'available' ? (
+            <button
+              type="button"
+              className="btn btn--primary btn--sm"
+              onClick={() => void window.nodrift.update.download()}
+            >
+              Download
+            </button>
+          ) : update?.state === 'downloaded' ? (
+            <button
+              type="button"
+              className="btn btn--primary btn--sm"
+              onClick={() => void window.nodrift.update.install()}
+            >
+              Restart &amp; update
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="btn btn--ghost btn--sm"
+              disabled={checking || update?.state === 'downloading'}
+              onClick={() => void checkForUpdates()}
+            >
+              {checking ? 'Checking…' : 'Check for updates'}
+            </button>
+          )}
+        </div>
       </section>
 
       <section className="settings__section">
@@ -82,7 +153,7 @@ export function SettingsTab(): React.JSX.Element {
       <section className="settings__section">
         <h2 className="settings__heading">Credits</h2>
         <p className="settings__hint">
-          Nodrift Client v{APP_VERSION} — a Minecraft: Java Edition launcher for Windows.
+          Nodrift Client v{version} — a Minecraft: Java Edition launcher for Windows.
         </p>
 
         <div className="credits">
@@ -92,11 +163,7 @@ export function SettingsTab(): React.JSX.Element {
           </div>
           <div className="credits__row">
             <span className="credits__label">Source</span>
-            <button
-              type="button"
-              className="credits__link"
-              onClick={() => openExternal(REPO_URL)}
-            >
+            <button type="button" className="credits__link" onClick={() => openExternal(REPO_URL)}>
               github.com/lmcoolj/nodriftlauncher
             </button>
           </div>
@@ -104,7 +171,11 @@ export function SettingsTab(): React.JSX.Element {
 
         <p className="settings__hint credits__thanks">
           Built with Electron &amp; React. Mod, resource-pack and shader data from{' '}
-          <button type="button" className="credits__link" onClick={() => openExternal('https://modrinth.com')}>
+          <button
+            type="button"
+            className="credits__link"
+            onClick={() => openExternal('https://modrinth.com')}
+          >
             Modrinth
           </button>
           . Not affiliated with Mojang or Microsoft.
