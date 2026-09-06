@@ -4,7 +4,7 @@ import { SkinFace } from './SkinFace'
 import { SettingsIcon } from './icons'
 import { MAIN_TABS, TAB_LABELS, type MainTab } from '../navigation'
 
-const APP_VERSION = 'v0.3.0'
+const APP_VERSION = 'v0.3.1'
 
 /** Blocky pixel "N" mark — placeholder until the real logo lands. */
 function BrandMark(): React.JSX.Element {
