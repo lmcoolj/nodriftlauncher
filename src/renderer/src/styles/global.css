@@ -963,6 +963,12 @@ input[type='radio']:disabled {
   display: flex;
   flex-direction: column;
   gap: 18px;
+  /* Stay pinned while the results column scrolls. */
+  position: sticky;
+  top: 0;
+  align-self: start;
+  max-height: calc(100vh - var(--nd-titlebar-h) - 36px);
+  overflow-y: auto;
 }
 .mods-filters__title {
   margin: 0;

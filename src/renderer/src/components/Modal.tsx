@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { CloseIcon } from './icons'
 
 interface ModalProps {
@@ -8,7 +9,11 @@ interface ModalProps {
   footer?: ReactNode
 }
 
-/** A simple themed modal: backdrop, square-cornered panel, Esc + backdrop close. */
+/**
+ * A simple themed modal: backdrop, square-cornered panel, Esc + backdrop close.
+ * Rendered through a portal to document.body so ancestor `transform`/`overflow`
+ * (e.g. an instance card's hover lift) can never trap or clip the fixed backdrop.
+ */
 export function Modal({ title, onClose, children, footer }: ModalProps): React.JSX.Element {
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
@@ -18,7 +23,7 @@ export function Modal({ title, onClose, children, footer }: ModalProps): React.J
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
 
-  return (
+  return createPortal(
     <div className="modal-backdrop" onMouseDown={onClose}>
       <div
         className="modal"
@@ -36,6 +41,7 @@ export function Modal({ title, onClose, children, footer }: ModalProps): React.J
         <div className="modal__body">{children}</div>
         {footer && <footer className="modal__footer">{footer}</footer>}
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
