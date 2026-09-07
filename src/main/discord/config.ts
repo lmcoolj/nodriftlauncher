@@ -8,7 +8,7 @@
  *
  * Leave empty to disable Rich Presence entirely (no connection is attempted).
  */
-export const DISCORD_CLIENT_ID: string = ''
+export const DISCORD_CLIENT_ID: string = '1546373367924400138'
 
 /** The art-asset key uploaded in the Discord app (Rich Presence → Art Assets). */
 export const DISCORD_LARGE_IMAGE = 'logo'
