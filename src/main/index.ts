@@ -9,6 +9,7 @@ import { registerModsIpc } from './ipc/modsIpc'
 import { registerSkinsIpc } from './ipc/skinsIpc'
 import { registerInstanceFsIpc } from './ipc/instanceFsIpc'
 import { registerUpdateIpc } from './ipc/updateIpc'
+import { initDiscordPresence, stopDiscordPresence } from './discord/presence'
 
 function createWindow(): void {
   const mainWindow = createMainWindow()
@@ -60,11 +61,16 @@ app.whenReady().then(() => {
   registerSkinsIpc()
   registerInstanceFsIpc()
   registerUpdateIpc()
+  initDiscordPresence()
   createWindow()
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
+})
+
+app.on('will-quit', () => {
+  stopDiscordPresence()
 })
 
 app.on('window-all-closed', () => {
